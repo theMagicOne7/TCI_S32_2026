@@ -87,3 +87,6 @@ Trabajamos con **forks + `upstream`** (el flujo de colaboración real del open s
 |       LEGAJO  | NOMBRE Y APELLIDO             |               EMAIL            | 
 |---------------|-------------------------------|--------------------------------|
 | 32782         | Cecilia Mariel Ballarre       | chechuceci3010@hotmail.com     |
+|---------------|-------------------------------|--------------------------------|
+| 33149         | Lucía Durán                   | luduran44@gmail.com            |
+=======
