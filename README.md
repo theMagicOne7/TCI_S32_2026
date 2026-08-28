@@ -79,3 +79,13 @@ Trabajamos con **forks + `upstream`** (el flujo de colaboración real del open s
 | **RA07** | Asistencia entre pares (revisión de código) |
 
 *Comisión S32 · Desarrollo de Software 2026 · UTN FR La Plata · Aula invertida + TCI.*
+
+---
+
+## 👥 Integrantes:
+
+|       LEGAJO  | NOMBRE Y APELLIDO             |               EMAIL            | 
+|---------------|-------------------------------|--------------------------------|
+| 32782         | Cecilia Mariel Ballarre       | chechuceci3010@hotmail.com     |
+|---------------|-------------------------------|--------------------------------|
+| 33149         | Lucía Durán                   | luduran44@gmail.com            |
