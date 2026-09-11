@@ -8,19 +8,19 @@
 
 ```mermaid
 flowchart TD
-    subgraph Usuarios y Actores
-        OP[Operario de Máquina\n(Mobile)]
-        EM[Empleado de Mantenimiento\n(Mobile)]
-        ENC[Encargado de Mantenimiento\n(PC / Mobile)]
-        GER[Gerencia / Administración\n(PC - Solo Lectura)]
+    subgraph "Usuarios y Actores"
+        OP["Operario de Máquina<br/>(Mobile)"]
+        EM["Empleado de Mantenimiento<br/>(Mobile)"]
+        ENC["Encargado de Mantenimiento<br/>(PC / Mobile)"]
+        GER["Gerencia / Administración<br/>(PC - Solo Lectura)"]
     end
 
-    subgraph Sistema de Planta Farmacéutica [Límite del Sistema]
-        APP[Sistema de Gestión de Stock y Mantenimiento]
+    subgraph "Sistema de Planta Farmacéutica [Límite del Sistema]"
+        APP["Sistema de Gestión de Stock y Mantenimiento"]
     end
 
-    subgraph Sistemas Externos
-        SMTP[Servicio de Correo / Notificaciones\n(RN-09 - Puerto/Adaptador Mailhog)]
+    subgraph "Sistemas Externos"
+        SMTP["Servicio de Correo / Notificaciones<br/>(RN-09 - Puerto/Adaptador Mailhog)"]
     end
 
     OP -->|Reporta incidencias, sube fotos, escanea QR máquina| APP
