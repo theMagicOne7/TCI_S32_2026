@@ -29,7 +29,6 @@ flowchart TD
     ENC -->|Supervisa, gestiona compras, autoriza liberación reservas| APP
     GER -->|Consulta tableros, recibe avisos de compras urgentes| APP
     APP -->|Dispara alertas de stock, informes e incidencias| SMTP
-    
 ```
 
 ## 2. Caso de Uso Principal (CUN): CU-01 Registrar Uso de Repuesto en Reparación 
