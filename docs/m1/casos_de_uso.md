@@ -1,4 +1,3 @@
-```markdown
 # Especificación de Casos de Uso y Diagramas de Interacción (M1)
 
 > Alcance correspondiente al Núcleo de 3 integrantes: Registrar uso de repuesto (RN-01, RN-02, RN-06), Cargar stock recibido (RN-08) y Reportar Incidencia con QR.
