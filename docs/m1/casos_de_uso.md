@@ -96,6 +96,7 @@ RN-06 — Trazabilidad interna: Todo consumo registra usuario, máquina, fecha/h
 
 ## 4. Diagrama de Secuencia: CU-01 Consumo de Repuesto
 
+```mermaid
 sequenceDiagram
     autonumber
     actor EM as Empleado Mantenimiento
@@ -127,6 +128,7 @@ sequenceDiagram
 
     API-->>UI: 201 Created (Consumo registrado con éxito)
     UI-->>EM: Confirmación en pantalla + stock actualizado
+```
 
 ## 5. Caso de Uso Secundario del Núcleo: CU-02 Reportar Incidencia con QR
 Actor Principal: Operario de Máquina
