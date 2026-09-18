@@ -32,22 +32,22 @@ Se adopta una **Arquitectura Multicapa** combinada con **Puertos y Adaptadores (
 ```mermaid
 flowchart TB
     subgraph Presentacion [Capa de Presentacion]
-        UI[App Mobile React / Vite]
-        API[Endpoints FastAPI / Pydantic]
+        UI["App Mobile React / Vite"]
+        API["Endpoints FastAPI / Pydantic"]
     end
 
     subgraph Aplicacion [Capa de Aplicacion]
-        SVC[Servicios de Casos de Uso\n(RegistrarUsoService, ReportarIncidenciaService)]
+        SVC["Servicios de Casos de Uso<br/>(RegistrarUsoService, ReportarIncidenciaService)"]
     end
 
     subgraph Dominio [Capa de Dominio - Core Negocio]
-        MODELS[Entidades: Repuesto, Incidencia, Reserva, Maquina]
-        RULES[Reglas de Negocio: RN-01 a RN-10\nMaquinas de Estado]
+        MODELS["Entidades: Repuesto, Incidencia, Reserva, Maquina"]
+        RULES["Reglas de Negocio: RN-01 a RN-10<br/>Maquinas de Estado"]
     end
 
     subgraph Infraestructura [Capa de Infraestructura]
-        REPO[Adaptador SQLModel / PostgreSQL]
-        MAIL[Adaptador Notificaciones SMTP / Mailhog]
+        REPO["Adaptador SQLModel / PostgreSQL"]
+        MAIL["Adaptador Notificaciones SMTP / Mailhog"]
     end
 
     UI -->|JSON / REST| API
