@@ -100,10 +100,10 @@ RN-06 — Trazabilidad interna: Todo consumo registra usuario, máquina, fecha/h
 sequenceDiagram
     autonumber
     actor EM as Empleado Mantenimiento
-    participant UI as "App Mobile (React)"
-    participant API as "Backend (FastAPI)"
-    participant DB as "Base de Datos (PostgreSQL)"
-    participant NOTIF as "Puerto Notificaciones (Mailhog)"
+    participant UI as App Mobile (React)
+    participant API as Backend (FastAPI)
+    participant DB as Base de Datos (PostgreSQL)
+    participant NOTIF as Puerto Notificaciones (Mailhog)
 
     EM->>UI: Escanea código QR del repuesto
     UI->>API: GET /api/v1/repuestos/{codigo}
@@ -114,7 +114,7 @@ sequenceDiagram
     EM->>UI: Ingresa cantidad a usar (ej: 2) y confirma
     UI->>API: POST /api/v1/reparaciones/{id}/consumos
     Note over API: Valida RN-01: cantidad <= stock_disponible
-    
+
     critical Transacción de Descuento
         API->>DB: UPDATE repuesto SET stock_fisico = stock_fisico - 2
         API->>DB: INSERT INTO linea_uso (reparacion_id, repuesto_id, cantidad)
