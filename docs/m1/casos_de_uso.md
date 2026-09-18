@@ -100,10 +100,10 @@ RN-06 — Trazabilidad interna: Todo consumo registra usuario, máquina, fecha/h
 sequenceDiagram
     autonumber
     actor EM as Empleado Mantenimiento
-    participant UI as App Mobile (React)
-    participant API as Backend (FastAPI)
-    participant DB as Base de Datos (PostgreSQL)
-    participant NOTIF as Puerto Notificaciones (Mailhog)
+    participant UI as "App Mobile (React)"
+    participant API as "Backend (FastAPI)"
+    participant DB as "Base de Datos (PostgreSQL)"
+    participant NOTIF as "Puerto Notificaciones (Mailhog)"
 
     EM->>UI: Escanea código QR del repuesto
     UI->>API: GET /api/v1/repuestos/{codigo}
