@@ -96,37 +96,39 @@ RN-06 — Trazabilidad interna: Todo consumo registra usuario, máquina, fecha/h
 
 ## 4. Diagrama de Secuencia: CU-01 Consumo de Repuesto
 
+```mermaid
 sequenceDiagram
-    autonumber
-    actor EM as Empleado Mantenimiento
-    participant UI as App Mobile (React)
-    participant API as Backend (FastAPI)
-    participant DB as Base de Datos (PostgreSQL)
-    participant NOTIF as Puerto Notificaciones (Mailhog)
+autonumber
+actor EM as Empleado Mantenimiento
+participant UI as App Mobile (React)
+participant API as Backend (FastAPI)
+participant DB as Base de Datos (PostgreSQL)
+participant NOTIF as Puerto Notificaciones (Mailhog)
 
-    EM->>UI: Escanea código QR del repuesto
-    UI->>API: GET /api/v1/repuestos/{codigo}
-    API->>DB: Consultar datos y stock
-    DB-->>API: Datos repuesto (Stock físico, reservado, umbral)
-    API-->>UI: 200 OK (Detalle y Stock disponible)
+EM->>UI: Escanea codigo QR del repuesto
+UI->>API: GET /api/v1/repuestos/{codigo}
+API->>DB: Consultar datos y stock
+DB-->>API: Datos repuesto (Stock fisico, reservado, umbral)
+API-->>UI: 200 OK - Detalle y Stock disponible
 
-    EM->>UI: Ingresa cantidad a usar (ej: 2) y confirma
-    UI->>API: POST /api/v1/reparaciones/{id}/consumos
-    Note over API: Valida RN-01: cantidad <= stock_disponible
-    
-    critical Transacción de Descuento
-        API->>DB: UPDATE repuesto SET stock_fisico = stock_fisico - 2
-        API->>DB: INSERT INTO linea_uso (reparacion_id, repuesto_id, cantidad)
-        API->>DB: INSERT INTO movimiento_stock (tipo='consumo', cant=2, fecha=NOW())
-    end
+EM->>UI: Ingresa cantidad a usar (ej: 2) y confirma
+UI->>API: POST /api/v1/reparaciones/{id}/consumos
+Note over API: Valida RN-01: cantidad <= stock_disponible
 
-    opt stock_disponible <= umbral_minimo (RN-02)
-        API->>NOTIF: Notificar alerta de reposición (RN-09)
-        NOTIF-->>API: Notificación enviada (log/mock)
-    end
+critical Transaccion de Descuento
+API->>DB: UPDATE repuesto SET stock_fisico = stock_fisico - 2
+API->>DB: INSERT INTO linea_uso (reparacion_id, repuesto_id, cantidad)
+API->>DB: INSERT INTO movimiento_stock (tipo='consumo', cant=2, fecha=NOW())
+end
 
-    API-->>UI: 201 Created (Consumo registrado con éxito)
-    UI-->>EM: Confirmación en pantalla + stock actualizado
+opt stock_disponible <= umbral_minimo (RN-02)
+API->>NOTIF: Notificar alerta de reposicion (RN-09)
+NOTIF-->>API: Notificacion enviada (log/mock)
+end
+
+API-->>UI: 201 Created - Consumo registrado con exito
+UI-->>EM: Confirmacion en pantalla + stock actualizado
+```
 
 ## 5. Caso de Uso Secundario del Núcleo: CU-02 Reportar Incidencia con QR
 Actor Principal: Operario de Máquina
