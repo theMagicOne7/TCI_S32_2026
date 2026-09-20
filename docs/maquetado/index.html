@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Incidencias - TCI S32</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+</head>
+<body>
+    <header>
+        <h1>Gestión de Incidencias</h1>
+    </header>
+
+    <main>
+        <form id="form-incidencia">
+            <div>
+                <label for="codigo-maquina">Código QR de la máquina:</label>
+                <input type="text" id="codigo-maquina" placeholder="Ej: CAL-001" required>
+            </div>
+
+            <div>
+                <label for="descripcion">Descripción del problema:</label>
+                <textarea id="descripcion" placeholder="Describí el problema observado..." maxlength="300" required></textarea>
+                <small id="contador">0/300</small>
+            </div>
+
+            <div>
+                <label for="foto">Foto de la incidencia:</label>
+                <input type="file" id="foto" accept="image/*">
+            </div>
+
+            <div>
+                <label for="turno">Turno:</label>
+                <select id="turno" required>
+                    <option value="mañana">Mañana</option>
+                    <option value="tarde">Tarde</option>
+                    <option value="noche">Noche</option>
+                </select>
+            </div>
+
+            <button type="submit" id="btn-enviar">Registrar Incidencia</button>
+        </form>
+
+        <div id="preview-incidencia" hidden></div>
+    </main>
+
+    <footer>
+        <p>Sistema de Mantenimiento · Turno Activo</p>
+    </footer>
+</body>
+</html>
