@@ -36,3 +36,4 @@ form.addEventListener("submit", (event) => {
     form.reset();
     contadorSpan.textContent = "0/300";
 });
+
