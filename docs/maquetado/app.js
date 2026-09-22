@@ -29,7 +29,7 @@ const NOMBRES_TURNO = {
 
 function renderizarPreview(incidencia) {
     const turnoLegible = NOMBRES_TURNO[incidencia.turno] ?? incidencia.turno;
-    let mensaje = `Incidencia registrada: ${incidencia.codigoMaquina} · Turno ${turnoLegible} — Descripción: ${incidencia.descripcion}`;
+    let mensaje = `✅ Incidencia registrada: ${incidencia.codigoMaquina} · Turno ${turnoLegible} — Descripción: ${incidencia.descripcion}`;
     
     if (incidencia.nombreFoto) {
         mensaje += `\n📎${incidencia.nombreFoto}`; // Bonus B2
