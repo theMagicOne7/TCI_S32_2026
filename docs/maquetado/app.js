@@ -7,13 +7,16 @@ const codigoInput = document.querySelector("#codigo-maquina");
 const descripcionInput = document.querySelector("#descripcion");
 const turnoInput = document.querySelector("#turno");
 const previewContainer = document.querySelector("#preview-incidencia");
+const contadorSpan = document.querySelector("#contador");
+const fotoInput = document.querySelector("#foto");
 
 // REQ-IP-06: Función con responsabilidad única de lectura (P3: objeto para UNA incidencia)
 function leerFormulario() {
     return {
         codigoMaquina: codigoInput.value.trim(),
         descripcion: descripcionInput.value.trim(),
-        turno: turnoInput.value
+        turno: turnoInput.value,
+        nombreFoto: fotoInput.files.length > 0 ? fotoInput.files[0].name : null // Bonus B2
     };
 }
 
@@ -26,7 +29,13 @@ const NOMBRES_TURNO = {
 
 function renderizarPreview(incidencia) {
     const turnoLegible = NOMBRES_TURNO[incidencia.turno] ?? incidencia.turno;
-    previewContainer.textContent = ⁠ ✅ Incidencia registrada: ${incidencia.codigoMaquina} · Turno ${turnoLegible} — Descripción: ${incidencia.descripcion} ⁠;
+    let mensaje = `Incidencia registrada: ${incidencia.codigoMaquina} · Turno ${turnoLegible} — Descripción: ${incidencia.descripcion}`;
+    
+    if (incidencia.nombreFoto) {
+        mensaje += `\n📎${incidencia.nombreFoto}`; // Bonus B2
+    }
+
+    previewContainer.textContent = mensaje;
 }
 
 // REQ-IP-04 y REQ-IP-05: Handler de submit desacoplado de la estructura HTML (P5)
@@ -35,7 +44,19 @@ form.addEventListener("submit", (event) => {
 
     const incidencia = leerFormulario();
     console.table(incidencia);
-});
+
 renderizarPreview(incidencia);
     previewContainer.hidden = false; // REQ-IP-09: Visibiliza el estado del sistema en pantalla
     form.reset(); // REQ-IP-15: Limpia los campos para la siguiente carga
+    if (contadorSpan) {
+        contadorSpan.textContent = "0/300";
+    }
+});
+
+// REQ-IP-16A: Feedback en vivo mientras el operario escribe
+if (descripcionInput && contadorSpan) {
+    descripcionInput.addEventListener("input", () => {
+        const longitud = descripcionInput.value.length;
+        contadorSpan.textContent = `${longitud}/300`;
+    });
+}
