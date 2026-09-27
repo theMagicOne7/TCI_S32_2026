@@ -1,6 +1,8 @@
 
 ## BALLARRE CECILIA MARIEL, LEGAJO: 32782
 
+### PARTE A
+
 # 3.2 Búsquedas
 
 1.	¿Qué es una SPA (Single Page Application) y en qué se diferencia de una página tradicional (MPA)?
@@ -31,9 +33,9 @@ Fuente: [XMLHttpRequest vs Fetch: ¿Cuál Reina en el Desarrollo Web Moderno?](h
 
 ---
 
-PARTE B
+### PARTE B
 
-4.2 Búsquedas
+## 4.2 Búsquedas
 
 1.	¿Qué es un componente en React? ¿Por qué conviene dividir la UI en componentes?
 
@@ -68,7 +70,7 @@ Usar TypeScript en el frontend, permite agregar una capa de seguridad sobre Java
 Fuente: [Qué es TypeScript y por qué aprenderlo | Henry Blog](https://www.soyhenry.com/blog/que-es-typescript-y-por-que-todo-full-stack-developer-deberia-aprenderlo-hoy)
 
 
-4.5 Preguntas guía
+## 4.5 Preguntas guía
 
 1.	¿Qué relación ves entre el patrón "separar datos de la vista" que usaste en el taller de incidencia (clase del 14/09) y el estado de React?
 
@@ -82,3 +84,43 @@ Evita errores porque define con exactitud qie datos necesita el componente y de 
 
 Transforma automaticamente el codigo en JavaScript estandar que cualquier navegador puede entender. Une y gestiona distintos archivos y librerias sin tener que agregar manualmente las etiquetas <script> en el <head>, ademas actualiza la pagina en tiempo real, una vez que cambiamos el codigo, la pantalla se refresca sin tener que recargar la pagina.
 
+---
+### PARTE C
+
+## 5.2 Búsquedas
+
+1. ¿Qué es un contrato de API (API contract)? ¿Por qué se dice que el contrato se define antes de codificar?
+
+Un contrato de API es un acuerdo formal, documentado e inequívoco entre quien provee un servicio y quienes lo consumen. Definir dicho contrado previamente ayuda a la fluidez del trabajo, ya que queda permite trabajar en paralelo, ademas, es mucho mas facil y rapido cambiar un documento que cambiar el codigo.
+
+Fuente: https://bump.sh/blog/api-contracts-extended-introduction/
+
+2. ¿Qué es un mock server y para qué sirve en un equipo donde frontend y backend se construyen en paralelo?
+
+Un mock server es una herramienta que imita un servidor real, en vez de procesar datos verdaderos o consultar una bse de datos, devuelve datos de prueba predefinidos cuando la app hace una consulta. Cuando el frontend y el backend trabajan en paralelo, el mock server sirve principalmente para que nadie tenga que esperar a nadie y el flujo de trabajo no se frene.
+
+Fuente: https://apidog.com/es/blog/lightweight-mock-server-restful-api/
+
+3. ¿OpenAPI y Swagger son lo mismo? ¿Cuál es la relación entre ambos nombres?
+
+Swagger es la version anterior de lo que hoy se conoce como OpenAPI, comparten el mismo proposito que es describir y documentar APIs en archivos JSON. 
+
+Fuente: https://blog.postman.com/openapi-vs-swagger/
+
+4. ¿Qué es un $ref en un documento OpenAPI y para qué sirve?
+
+Es una palabra clave que funciona como un puntero o enlace, sirve para evitar la duplicacion de codigo y modularizar la API
+
+## 5.5 Preguntas guía
+
+1. ¿Por qué conviene definir el contrato antes de codificar frontend y backend? ¿Qué desastre evita?
+
+Conviene definirlo antes de codificar ya que se podria tomar como una especie de plano oficiar y acordado, donde se establece que caminos van a existir, que datos se envian, que respuestas devuelve el servidor. Evita problemas de integracion al final, ya que puede pasar que el frontend espere los datos de una forma y el backend los programe de otra.
+
+2. ¿Cómo ayuda un mock server a que dos personas (una en frontend, otra en backend) trabajen en paralelo?
+
+El mock server ayuda eliminando los tiempos de espera innecesarios, también permite probar escenarios desde el inicio.
+
+3. ¿Qué relación hay entre el contrato OpenAPI y las reglas de negocio (RN-STOCK, RN-UMBRAL) que ya documentaste en la M1?
+
+si una operacion intenta violar una regla de negocio, el contrato estipula que codigo de error devolvera el servidor y que mensaje dara, también garantiza que la interfaz de usuario y el servidor manejen los mismos limites y criterios establecidos en el analisis del dominio.
