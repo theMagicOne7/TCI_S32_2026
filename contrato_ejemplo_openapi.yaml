@@ -1,0 +1,52 @@
+openapi: 3.1.0
+info:
+  title: API TCI - Planta Industrial
+  version: 1.0.0
+  description: Contrato de prueba para Incidencias y Repuestos
+
+paths:
+  /repuestos:
+    get:
+      summary: Lista de repuestos disponibles
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 101
+                    nombre:
+                      type: string
+                      example: Rodamiento
+                    stock:
+                      type: integer
+                      example: 15
+
+  /incidencias:
+    get:
+      summary: Lista de incidencias reportadas
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 1
+                    maquina:
+                      type: string
+                      example: CAL-001
+                    estado:
+                      type: string
+                      example: Pendiente
