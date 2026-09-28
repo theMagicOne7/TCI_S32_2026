@@ -1,0 +1,44 @@
+openapi: 3.0.3
+info:
+  title: API de Incidencias
+  version: 1.0.0
+  description: Contrato mínimo para consultar una incidencia.
+paths:
+  /incidencias/{id}:
+    get:
+      summary: Obtiene una incidencia por su identificador
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Incidencia encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incidencia'
+              example:
+                id: 1
+                titulo: No se puede registrar una incidencia
+                prioridad: Alta
+                estado: En progreso
+components:
+  schemas:
+    Incidencia:
+      type: object
+      required: [id, titulo, prioridad, estado]
+      properties:
+        id:
+          type: integer
+        titulo:
+          type: string
+        prioridad:
+          type: string
+          enum: [Alta, Media, Baja]
+        estado:
+          type: string
+          enum: [Abierta, En progreso, Resuelta]
