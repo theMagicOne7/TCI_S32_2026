@@ -1,0 +1,195 @@
+openapi: 3.1.0
+info:
+  title: API de Gestión de Planta Farmacéutica
+  version: 1.0.0
+  description: Contrato v0 para consumo de repuestos y reporte de incidencias (Hito M2).
+
+paths:
+  /repuestos/{codigo}:
+    get:
+      summary: Consultar stock disponible de un repuesto
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          description: Código identificador del repuesto (ej. FIL-001)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stock disponible devuelto con éxito.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Repuesto'
+              examples:
+                FIL-001:
+                  summary: Filtro de aire industrial (Stock óptimo)
+                  value:
+                    codigo: "FIL-001"
+                    nombre: "Filtro de aire industrial"
+                    stock_disponible: 12
+                    ubicacion: "Estante A-4"
+                MOT-005:
+                  summary: Motor trifásico (Stock bajo)
+                  value:
+                    codigo: "MOT-005"
+                    nombre: "Motor trifásico de cinta transportadora"
+                    stock_disponible: 3
+                    ubicacion: "Depósito Principal B-12"
+                PLA-104:
+                  summary: Plaqueta electrónica (Sin stock)
+                  value:
+                    codigo: "PLA-104"
+                    nombre: "Plaqueta electrónica de sensor"
+                    stock_disponible: 0
+                    ubicacion: "Depósito Norte B-9"
+        '404':
+          description: Repuesto no encontrado en catálogo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                no_encontrado:
+                  summary: Repuesto inexistente
+                  value:
+                    error: "Repuesto no encontrado en el inventario de planta"
+
+  /reparaciones/{id}/consumos:
+    post:
+      summary: Registrar uso de repuesto (RN-01)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID de la reparación o incidencia activa
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsumoRequest'
+            examples:
+              consumo_filtro:
+                summary: Registro de consumo estándar
+                value:
+                  codigo_repuesto: "FIL-001"
+                  cantidad: 2
+      responses:
+        '201':
+          description: Consumo registrado y stock descontado exitosamente (RN-01).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsumoResponse'
+              examples:
+                confirmacion_consumo:
+                  summary: Confirmación de descuento atómico
+                  value:
+                    id_consumo: 101
+                    reparacion_id: 1
+                    codigo_repuesto: "FIL-001"
+                    cantidad_consumida: 2
+                    stock_remanente: 10
+                    timestamp: "2026-10-05T14:30:00Z"
+        '400':
+          description: Stock insuficiente o validación fallida (RN-01)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                stock_insuficiente:
+                  summary: Error de stock no disponible
+                  value:
+                    error: "Stock disponible insuficiente para registrar el consumo (RN-01)"
+        '404':
+          description: Reparación o repuesto no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                reparacion_inexistente:
+                  summary: Orden de reparación inexistente
+                  value:
+                    error: "La orden de reparación especificada no existe"
+
+components:
+  schemas:
+    Repuesto:
+      type: object
+      required:
+        - codigo
+        - nombre
+        - stock_disponible
+        - ubicacion
+      properties:
+        codigo:
+          type: string
+          example: "FIL-001"
+        nombre:
+          type: string
+          example: "Filtro de aire industrial"
+        stock_disponible:
+          type: integer
+          minimum: 0
+          example: 12
+        ubicacion:
+          type: string
+          example: "Estante A-4"
+
+    ConsumoRequest:
+      type: object
+      required:
+        - codigo_repuesto
+        - cantidad
+      properties:
+        codigo_repuesto:
+          type: string
+          example: "FIL-001"
+        cantidad:
+          type: integer
+          minimum: 1
+          example: 2
+
+    ConsumoResponse:
+      type: object
+      required:
+        - id_consumo
+        - reparacion_id
+        - codigo_repuesto
+        - cantidad_consumida
+        - stock_remanente
+      properties:
+        id_consumo:
+          type: integer
+          example: 101
+        reparacion_id:
+          type: integer
+          example: 1
+        codigo_repuesto:
+          type: string
+          example: "FIL-001"
+        cantidad_consumida:
+          type: integer
+          example: 2
+        stock_remanente:
+          type: integer
+          example: 10
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-10-05T14:30:00Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: "Mensaje descriptivo del error"
