@@ -1,7 +1,8 @@
 // ENCABEZADO Y BARRA DE NAVEGACIÓN RESPONSIVE
 
 import { NavLink } from 'react-router-dom';
-import { type TemaPaleta, type UsuarioPlanta } from '../types/index';
+// 👇 1. Asegurarse de importar Incidencia
+import { type TemaPaleta, type UsuarioPlanta, type Incidencia } from '../types/index';
 import { PERSONAL_PLANTA } from '../constants/mock';
 
 interface NavBarProps {
@@ -10,6 +11,8 @@ interface NavBarProps {
   onToggleTema: () => void;
   usuarioActual: UsuarioPlanta;
   onCambiarUsuario: (usuario: UsuarioPlanta) => void;
+    // 👇 2. Agregamos la propiedad incidencias
+  incidencias: Incidencia[]; 
 }
 
 export function NavBar({
@@ -17,7 +20,9 @@ export function NavBar({
   esModoOscuro,
   onToggleTema,
   usuarioActual,
-  onCambiarUsuario
+  onCambiarUsuario,
+  // 👇 3. Recibimos incidencias
+  incidencias 
 }: NavBarProps) {
   const getLinkStyle = ({ isActive }: { isActive: boolean }) => ({
     textDecoration: 'none',
@@ -26,8 +31,22 @@ export function NavBar({
     color: isActive ? tema.acento : tema.textoSecundario,
     borderBottom: isActive ? `2px solid ${tema.acento}` : '2px solid transparent',
     paddingBottom: '6px',
-    transition: 'all 0.2s ease'
+    transition: 'all 0.2s ease',
+        display: 'flex', // Necesario para alinear texto y globito
+    alignItems: 'center',
+    gap: '6px'
   });
+
+    // LÓGICA DE PERMISOS PARA LA BARRA DE NAVEGACIÓN
+  const esDireccion = usuarioActual.area === 'direccion';
+  const esAuditorMantenimiento = usuarioActual.area === 'mantenimiento' || esDireccion;
+
+  // 👇 4. LÓGICA DEL GLOBITO: Contamos solo las "pendientes" según el rol
+  const incidenciasPendientes = (incidencias || []).filter(inc => {
+    if (inc.estado !== 'pendiente') return false; 
+    if (esAuditorMantenimiento) return true; // Mantenimiento ve todas
+    return inc.operario.includes(usuarioActual.nombre); // Operario ve solo las suyas
+  }).length;
 
   return (
     <header style={{ borderBottom: `1px solid ${tema.borde}`, paddingBottom: '16px' }}>
@@ -112,11 +131,26 @@ export function NavBar({
                 outline: 'none'
               }}
             >
-              {PERSONAL_PLANTA.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre} ({u.rol === 'supervisor' ? 'Supervisor' : 'Técnico'})
-                </option>
-              ))}
+                            {['produccion', 'mantenimiento', 'deposito', 'direccion'].map((areaStr) => {
+                const empleadosArea = PERSONAL_PLANTA.filter((u) => u.area === areaStr);
+                if (empleadosArea.length === 0) return null;
+
+                return (
+                  <optgroup key={areaStr} label={`📍 ÁREA: ${areaStr.toUpperCase()}`}>
+                    {empleadosArea.map((u) => {
+                      const textoRol = u.rol === 'encargado' 
+                        ? `encargado de ${areaStr}` 
+                        : u.rol;
+                      
+                      return (
+                        <option key={u.id} value={u.id}>
+                          {u.nombre} ({textoRol})
+                        </option>
+                      );
+                    })}
+                  </optgroup>
+                );
+              })}
             </select>
           </div>
 
@@ -139,11 +173,62 @@ export function NavBar({
       </div>
 
       {/* 2. Nivel inferior: Enlaces principales de navegación */}
-      <nav style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-        <NavLink to="/" style={getLinkStyle}>Inicio</NavLink>
-        <NavLink to="/repuestos" style={getLinkStyle}>Repuestos (CU-01)</NavLink>
-        <NavLink to="/historial" style={getLinkStyle}>
-          {usuarioActual.rol === 'supervisor' ? 'Auditoría (RN-06)' : 'Auditoría 🔒'}
+      <nav style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <NavLink to="/" style={getLinkStyle}>
+          Inicio
+        </NavLink>
+        <NavLink to="/repuestos" style={getLinkStyle}>
+          Repuestos (CU-01)
+        </NavLink>
+        <NavLink to="/recepcion" style={getLinkStyle}>
+           🚚 Recepción 
+        </NavLink>
+
+        {/* BOTONES DE AUDITORÍA DINÁMICOS POR ÁREA */}
+        {(esDireccion || usuarioActual.area === 'deposito') && (
+          <NavLink to="/auditoria/deposito" style={getLinkStyle}>
+            📦 Auditoría Depósito 
+          </NavLink>
+        )}
+
+        {(esDireccion || usuarioActual.area === 'mantenimiento') && (
+          <NavLink to="/auditoria/mantenimiento" style={getLinkStyle}>
+            🛠️ Auditoría Mantenimiento 
+          </NavLink>
+        )}
+
+        {(esDireccion || usuarioActual.area === 'produccion') && (
+          <NavLink to="/auditoria/produccion" style={getLinkStyle}>
+            ⚙️ Auditoría Producción 
+          </NavLink>
+        )}
+
+        <NavLink style={getLinkStyle} to="/simulador">
+          📘 Cargar Datos 
+        </NavLink>
+
+        <NavLink to="/nueva-incidencia" style={getLinkStyle}>
+          🚨 Reportar Falla 
+        </NavLink>
+        
+        {/* 👇 5. EL ENLACE DE TICKETS AHORA INCLUYE EL GLOBITO 👇 */}
+        <NavLink to="/auditoria-incidencias" style={getLinkStyle}>
+          {esAuditorMantenimiento ? '🔧 Panel de Mantenimiento' : '📋 Mis Tickets de Falla'}
+          
+          {incidenciasPendientes > 0 && (
+            <span style={{
+              background: '#ef4444', // Rojo brillante
+              color: 'white',
+              fontSize: '0.7rem',
+              fontWeight: 'bold',
+              padding: '2px 7px',
+              borderRadius: '999px',
+              lineHeight: 1,
+              marginLeft: '2px'
+            }}>
+              {incidenciasPendientes}
+            </span>
+          )}
         </NavLink>
       </nav>
     </header>

@@ -1,7 +1,7 @@
 // DASHBOARD DE INICIO RESPONSIVE CON TARJETAS OPERATIVAS
 
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import type { LayoutContextType } from '../layout/AppLayout';
+import type { LayoutContextType } from '../types';
 
 export function HomePage() {
   const navigate = useNavigate();

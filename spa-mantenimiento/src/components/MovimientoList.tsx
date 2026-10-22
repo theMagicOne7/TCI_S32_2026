@@ -1,7 +1,6 @@
-
-
 // LISTA DE AUDITORÍA Y TRAZABILIDAD DE MOVIMIENTOS (RN-06)
 
+import { useState } from 'react';
 import { type MovimientoStock, type TemaPaleta } from '../types/index';
 
 interface MovimientoItemProps {
@@ -12,45 +11,91 @@ interface MovimientoItemProps {
 
 // Subcomponente atómico para cada registro inmutable
 function MovimientoItem({ movimiento, tema, esModoOscuro }: MovimientoItemProps) {
-    const { hora, codigo, operario, cantidad } = movimiento;
+  const { hora, fecha, codigo, operario, cantidad, maquinaVinculada, motivoUso } = movimiento;
+  
+  const [verMotivo, setVerMotivo] = useState(false);
+
+  // 👇 LÓGICA INTELIGENTE: Diferenciar ingreso de depósito vs retiro técnico 👇
+  const esIngreso = maquinaVinculada === 'N/A';
+  const colorOperacion = esIngreso ? '#16a34a' : '#ef4444'; // Verde para ingreso, Rojo para retiro
+  const signoOperacion = esIngreso ? '+' : '-';
 
     return (
         <div
             style={{
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
                 background: esModoOscuro ? '#061b24' : '#f8fafc',
-                padding: '10px 12px',
+                padding: '12px',
                 borderRadius: '8px',
-                fontSize: '0.8rem',
-                border: `1px solid ${tema.borde}`
+                border: `1px solid ${tema.borde}`,
+                flexDirection: 'column',
+                gap: '8px'
       }}
     >
+            {/* Fila principal del registro */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ color: tema.textoSecundario, fontFamily: 'monospace', fontSize: '0.82rem' }}>
-              {hora}
+            <span style={{ color: tema.textoSecundario, fontFamily: 'monospace', fontSize: '0.75rem' }}>
+              {fecha} {hora}
             </span>
             <b style={{ color: tema.textoPrincipal, fontFamily: 'monospace', fontSize: '0.88rem' }}>
               {codigo}
             </b>
           </div>
           <span style={{ color: tema.textoSecundario, fontSize: '0.75rem', fontWeight: 500 }}>
-            👤 {operario || 'Sin operario asignado'}
+            👤 {operario} {maquinaVinculada !== 'N/A' ? ` | ⚙️ Máquina: ${maquinaVinculada}` : ''}
           </span>
       </div>
 
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
       <span
         style={{
-          color: '#ef4444',
+          color: colorOperacion,
           fontWeight: 800,
           fontSize: '0.9rem',
           fontFamily: 'monospace'
         }}
       >
-        -{cantidad} u.
+        {signoOperacion}{cantidad} u.
       </span>
+                
+          {/* Botón para desplegar el motivo */}
+          {motivoUso && (
+            <button
+              onClick={() => setVerMotivo(!verMotivo)}
+              style={{
+                background: 'transparent',
+                color: '#0ea5e9',
+                border: '1px solid #0ea5e9',
+                borderRadius: '4px',
+                padding: '2px 6px',
+                fontSize: '0.65rem',
+                cursor: 'pointer',
+                fontWeight: 700
+              }}
+            >
+              {verMotivo ? 'Ocultar' : 'Ver Motivo'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Caja desplegable con el motivo de uso */}
+      {verMotivo && motivoUso && (
+        <div style={{
+          marginTop: '4px',
+          padding: '8px',
+          background: esModoOscuro ? '#16232b' : '#f1f5f9',
+          borderRadius: '6px',
+          fontSize: '0.75rem',
+          color: tema.textoPrincipal,
+          borderLeft: `3px solid ${colorOperacion}`
+        }}>
+          <b>Motivo de {esIngreso ? 'ingreso' : 'retiro'}:</b> {motivoUso}
+        </div>
+      )}
     </div>
   );
 }
