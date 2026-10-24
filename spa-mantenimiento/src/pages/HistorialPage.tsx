@@ -5,11 +5,18 @@ import { useOutletContext } from 'react-router-dom';
 import { MovimientoList } from '../components/MovimientoList';
 import { type UsuarioPlanta } from '../types/index';
 import { PERSONAL_PLANTA } from '../constants/mock';
-import type { LayoutContextType } from '../layout/AppLayout';
+import type { LayoutContextType } from '../types/index';
 
 export function HistorialPage() {
   const { tema, esModoOscuro, movimientos, usuarioActual } = useOutletContext<LayoutContextType>();
   const [filtroOperario, setFiltroOperario] = useState<string>('todos');
+  
+  // 1. Calcular turno actual por defecto (Mañana: 6-14, Tarde: 14-22, Noche: 22-6)
+  const horaActual = new Date().getHours();
+  const turnoActual = (horaActual >= 6 && horaActual < 14) ? 'mañana' 
+                    : (horaActual >= 14 && horaActual < 22) ? 'tarde' 
+                    : 'noche';
+  const [filtroTurno, setFiltroTurno] = useState<string>(turnoActual);
 
   // CONTROL DE ACCESO (RBAC): Bloqueo estricto para perfiles no supervisores
   if (usuarioActual.rol !== 'supervisor') {
@@ -47,11 +54,14 @@ export function HistorialPage() {
     );
   }
 
-  // Vista autorizada para Supervisores: filtrado reactivo
-  const movimientosFiltrados = filtroOperario === 'todos'
-    ? movimientos
-    : movimientos.filter((m) => m.operario.includes(filtroOperario));
-
+   // Vista autorizada para Supervisores: filtrado reactivo doble (Operario + Turno)
+  const movimientosFiltrados = movimientos.filter((m) => {
+    // Nota: Cuando actualices mock/types, asegurate que 'm.turno' exista en tus datos
+    const coincideOperario = filtroOperario === 'todos' || m.operario.includes(filtroOperario);
+    const coincideTurno = filtroTurno === 'todos' || m.turno === filtroTurno;
+    return coincideOperario && coincideTurno;
+  });
+  
   return (
     <section
       style={{
@@ -125,6 +135,45 @@ export function HistorialPage() {
               Solo {u.nombre} ({u.legajo})
             </option>
           ))}
+        </select>
+      </div>
+            {/* 2.5 Filtro de auditoría por Turno (Aparece con el turno actual por defecto) */}
+      <div
+        style={{
+          margin: '0 0 14px 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          background: esModoOscuro ? '#061b24' : '#f8fafc',
+          padding: '8px 12px',
+          borderRadius: '8px',
+          border: `1px solid ${tema.borde}`
+        }}
+      >
+        <label htmlFor="filtro-turno" style={{ fontSize: '0.75rem', fontWeight: 600, color: tema.textoSecundario }}>
+          Filtrar Turno:
+        </label>
+        <select
+          id="filtro-turno"
+          value={filtroTurno}
+          onChange={(e) => setFiltroTurno(e.target.value)}
+          style={{
+            flex: 1,
+            background: tema.fondoTarjeta,
+            color: tema.textoPrincipal,
+            border: `1px solid ${tema.borde}`,
+            borderRadius: '6px',
+            padding: '4px 8px',
+            fontSize: '0.78rem',
+            fontWeight: 600,
+            outline: 'none',
+            cursor: 'pointer'
+          }}
+        >
+          <option value="todos">Todos los turnos</option>
+          <option value="mañana">Mañana (06:00 - 14:00)</option>
+          <option value="tarde">Tarde (14:00 - 22:00)</option>
+          <option value="noche">Noche (22:00 - 06:00)</option>
         </select>
       </div>
 

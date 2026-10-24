@@ -4,8 +4,13 @@ import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from './layout/AppLayout';
 import { HomePage } from './pages/HomePage';
 import { RepuestosPage } from './pages/RepuestoPage';
-import { HistorialPage } from './pages/HistorialPage';
+// 👇 1. Importamos el nuevo componente inteligente (y borramos HistorialPage)
+import { AuditoriaAreaPage } from './pages/AuditoriaAREAPage';
 import { type TemaPaleta } from './types/index';
+import { RecepcionPage } from './pages/RecepcionPage';
+import { SimuladorPage } from './pages/SimuladorPage';
+import { NuevaIncidenciaPage } from './pages/NuevaIncidenciaPage';
+import { AuditoriaIncidenciasPage } from './pages/AuditoriaIncidenciasPage';
 
 interface RouterConfigProps {
   tema: TemaPaleta;
@@ -34,9 +39,36 @@ export const createAppRouter = ({ tema, esModoOscuro, onToggleTema }: RouterConf
           element: <RepuestosPage />
         },
         {
-          path: 'historial',
-          element: <HistorialPage />
+          path: 'recepcion',
+          element: <RecepcionPage/>
+        },
+        // 👇 2. NUEVAS RUTAS DE AUDITORÍA AISLADAS POR DOMINIO 👇
+        {
+          path: 'auditoria/deposito',
+          element: <AuditoriaAreaPage areaObjetivo="deposito" titulo="📦 Auditoría de Depósito" />
+        },
+        {
+          path: 'auditoria/mantenimiento',
+          element: <AuditoriaAreaPage areaObjetivo="mantenimiento" titulo="🔧 Auditoría de Mantenimiento" />
+        },
+        {
+          path: 'auditoria/produccion',
+          element: <AuditoriaAreaPage areaObjetivo="produccion" titulo="⚙️ Auditoría de Producción" />
+        },
+        // 👆 FIN NUEVAS RUTAS 👆
+        {
+          path: 'simulador',
+          element: <SimuladorPage/>
+        },
+        {
+          path: 'nueva-incidencia',
+          element: <NuevaIncidenciaPage/>
+        },
+        {
+          path: 'auditoria-incidencias',
+          element: <AuditoriaIncidenciasPage/>
         }
+
       ]
     }
   ]);
