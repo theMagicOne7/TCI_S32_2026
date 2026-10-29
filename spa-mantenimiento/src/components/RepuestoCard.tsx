@@ -10,6 +10,10 @@ interface RepuestoCardProps {
   esModoOscuro: boolean;
   cantidadAConsumir: number;
   mensajeConsumo: string | null;
+    maquinaVinculada?: string; //NUEVO
+  motivoUso?: string; //NUEVO
+  onMaquinaChange?: (val: string) => void; // NUEVO
+  onMotivoChange?: (val: string) => void;  // NUEVO
   onIncrementar: () => void;
   onDecrementar: () => void;
   onCambioCantidad: (cant: number) => void;
@@ -22,6 +26,10 @@ export function RepuestoCard({
   esModoOscuro,
   cantidadAConsumir,
   mensajeConsumo,
+  maquinaVinculada = '',
+  motivoUso = '',
+  onMaquinaChange,
+  onMotivoChange,
   onIncrementar,
   onDecrementar,
   onCambioCantidad,
@@ -143,6 +151,42 @@ export function RepuestoCard({
       {/* 5. CU-01 & RN-01: Control de Registro o Bloqueo */}
       {!sinStock ? (
         <div style={{ marginTop: '18px' }}>
+                    
+          {/* 👇 NUEVO: INPUT DE MÁQUINA Y MOTIVO 👇 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.80rem', fontWeight: 600, color: tema.textoSecundario, marginBottom: '4px' }}>
+                Máquina (Ej: CAL-01)
+              </label>
+              <input
+                type="text"
+                value={maquinaVinculada}
+                onChange={(e) => onMaquinaChange && onMaquinaChange(e.target.value)}
+                placeholder="Código de la máquina..."
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${tema.borde}`,
+                  background: tema.fondoInput, color: tema.textoPrincipal, outline: 'none', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.80rem', fontWeight: 600, color: tema.textoSecundario, marginBottom: '4px' }}>
+                Motivo del retiro
+              </label>
+              <input
+                type="text"
+                value={motivoUso}
+                onChange={(e) => onMotivoChange && onMotivoChange(e.target.value)}
+                placeholder="Ej: Mantenimiento preventivo, rotura..."
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${tema.borde}`,
+                  background: tema.fondoInput, color: tema.textoPrincipal, outline: 'none', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+          </div>
+          {/* 👆 FIN NUEVO 👆 */}
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <label htmlFor="cant-consumo" style={{ fontSize: '0.85rem', fontWeight: 600, color: tema.textoPrincipal }}>
               Cantidad a utilizar:

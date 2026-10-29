@@ -2,8 +2,17 @@
 
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { type TemaPaleta, type MovimientoStock, type UsuarioPlanta } from '../types/index';
-import { PERSONAL_PLANTA } from '../constants/mock';
+// 👇 IMPORTAMOS LOS TIPOS ACTUALIZADOS (Incluyendo Incidencia)
+import { 
+  type TemaPaleta, 
+  type MovimientoStock, 
+  type UsuarioPlanta, 
+  type OrdenCompra, 
+  type LayoutContextType, 
+  type Repuesto,
+  type Incidencia // <-- Nuevo tipo importado
+} from '../types/index';
+import { PERSONAL_PLANTA, CATALOGO_REPUESTOS } from '../constants/mock'; 
 import { NavBar } from '../components/NavBar';
 
 interface AppLayoutProps {
@@ -12,21 +21,42 @@ interface AppLayoutProps {
   onToggleTema: () => void;
 }
 
-export interface LayoutContextType {
-  tema: TemaPaleta;
-  esModoOscuro: boolean;
-  movimientos: MovimientoStock[];
-  agregarMovimiento: (nuevo: MovimientoStock) => void;
-  usuarioActual: UsuarioPlanta;
-}
-
 export function AppLayout({ tema, esModoOscuro, onToggleTema }: AppLayoutProps) {
   const [movimientos, setMovimientos] = useState<MovimientoStock[]>([]);
   const [usuarioActual, setUsuarioActual] = useState<UsuarioPlanta>(PERSONAL_PLANTA[0]);
+    const [ordenesCompra, setOrdenesCompra] = useState<OrdenCompra[]>([]);
+  const [repuestos, setRepuestos] = useState<Repuesto[]>(CATALOGO_REPUESTOS);
+  
+  // 👇 NUEVO: Estado Global para Incidencias 👇
+  const [incidencias, setIncidencias] = useState<Incidencia[]>([]);
+
+  const actualizarRepuesto = (repuestoModificado: Repuesto) => {
+    setRepuestos((prev) => 
+      prev.map(r => r.codigo === repuestoModificado.codigo ? repuestoModificado : r)
+    );
+  };
 
   const agregarMovimiento = (nuevo: MovimientoStock) => {
     setMovimientos((prev) => [nuevo, ...prev]);
   };
+  
+  const agregarOrdenCompra = (nueva: OrdenCompra) => {
+    setOrdenesCompra((prev) => [...prev, nueva]);
+  };
+
+  const actualizarOrdenCompra = (ocModificada: OrdenCompra) => {
+    setOrdenesCompra((prev) => prev.map(oc => oc.id === ocModificada.id ? ocModificada : oc));
+  };
+
+  // 👇 NUEVO: Funciones de Control para Incidencias 👇
+  const agregarIncidencia = (nueva: Incidencia) => {
+    setIncidencias((prev) => [nueva, ...prev]);
+  };
+
+  const actualizarIncidencia = (incModificada: Incidencia) => {
+    setIncidencias((prev) => prev.map(inc => inc.id === incModificada.id ? incModificada : inc));
+  };
+  // 👆 FIN NUEVO 👆
 
   return (
     <div
@@ -44,7 +74,7 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema }: AppLayoutProps) 
       <main
         style={{
           width: '100%',
-          maxWidth: '960px', // Se expande de forma elegante en escritorio
+          maxWidth: '960px',
           background: tema.fondoTarjeta,
           borderRadius: '16px',
           border: `1px solid ${tema.borde}`,
@@ -64,6 +94,7 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema }: AppLayoutProps) 
           onToggleTema={onToggleTema}
           usuarioActual={usuarioActual}
           onCambiarUsuario={setUsuarioActual}
+          incidencias={incidencias}  // <-- ESTA ES LA LÍNEA NUEVA
         />
 
         <div style={{ width: '100%' }}>
@@ -73,7 +104,16 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema }: AppLayoutProps) 
               esModoOscuro,
               movimientos,
               agregarMovimiento,
-              usuarioActual
+              usuarioActual,
+              ordenesCompra,
+              agregarOrdenCompra,
+              actualizarOrdenCompra,
+              repuestos,
+              actualizarRepuesto,
+              // 👇 REPARTIMOS LAS INCIDENCIAS AL RESTO DE LA APP 👇
+              incidencias,
+              agregarIncidencia,
+              actualizarIncidencia
             } satisfies LayoutContextType}
           />
         </div>
