@@ -8,7 +8,7 @@ import { RepuestosPage } from './pages/RepuestoPage';
 import { AuditoriaAreaPage } from './pages/AuditoriaAREAPage';
 import { type TemaPaleta } from './types/index';
 import { RecepcionPage } from './pages/RecepcionPage';
-import { SimuladorPage } from './pages/SimuladorPage';
+//import { SimuladorPage } from './pages/SimuladorPage';
 import { NuevaIncidenciaPage } from './pages/NuevaIncidenciaPage';
 import { AuditoriaIncidenciasPage } from './pages/AuditoriaIncidenciasPage';
 
@@ -56,10 +56,10 @@ export const createAppRouter = ({ tema, esModoOscuro, onToggleTema }: RouterConf
           element: <AuditoriaAreaPage areaObjetivo="produccion" titulo="⚙️ Auditoría de Producción" />
         },
         // 👆 FIN NUEVAS RUTAS 👆
-        {
-          path: 'simulador',
-          element: <SimuladorPage/>
-        },
+        //{
+          //path: 'simulador',
+          //element: <SimuladorPage/>
+        //},
         {
           path: 'nueva-incidencia',
           element: <NuevaIncidenciaPage/>
