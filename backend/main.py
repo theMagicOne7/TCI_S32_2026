@@ -156,10 +156,12 @@ def crear_nuevo_usuario(
             detail="Acceso denegado: Solo Ema (Supervisor) o Cecilia Ballarre pueden registrar nuevos usuarios."
         )
 
-    nuevo_username = datos.get("username")
-    nombre_completo = datos.get("nombre_completo", nuevo_username) # 👈 Si no se envía, toma el username por defecto
+    nuevo_username = (datos.get("username") or "").strip()
     nueva_password = datos.get("password")
     nuevo_rol = datos.get("rol")
+    # Soporta tanto nombre/apellido separados como nombre_completo
+    nombre = (datos.get("nombre") or datos.get("nombre_completo") or nuevo_username).strip()
+    apellido = (datos.get("apellido") or "").strip()
 
     if not nuevo_username or not nueva_password or not nuevo_rol:
         raise HTTPException(status_code=400, detail="Faltan datos obligatorios (username, password, rol)")
@@ -172,7 +174,8 @@ def crear_nuevo_usuario(
         raise HTTPException(status_code=400, detail=f"Rol inválido. Opciones: {roles_validos}")
 
     # Verificar que no exista un usuario duplicado
-    existente = session.exec(select(Usuario).where(Usuario.username == nuevo_username)).first()
+    existente = session.exec(
+        select(Usuario).where(Usuario.username.ilike(nuevo_username))).first()
     if existente:
         raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso")
 
@@ -180,11 +183,11 @@ def crear_nuevo_usuario(
     clave_hasheada = pwd_context.hash(nueva_password)
 
     nuevo_usuario = Usuario(
-        username=datos.username,
-        apellido=datos.apellido,
-        nombre=datos.nombre,
-        hashed_password=pwd_context.hash(datos.password),
-        rol=datos.rol
+        username=nuevo_username,
+        apellido=apellido,
+        nombre=nombre,
+        hashed_password=clave_hasheada,
+        rol=rol_enum
     )
     session.add(nuevo_usuario)
     session.commit()
@@ -274,7 +277,7 @@ def editar_usuario(
     nuevo_apellido = datos.get("apellido")
     nuevo_nombre = datos.get("nombre")
 
-    if nuevo_username and nuevo_username != user_db.username:
+    if nuevo_username and nuevo_username.lower() != user_db.username.lower():
         existente = session.exec(select(Usuario).where(Usuario.username == nuevo_username)).first()
         if existente:
             raise HTTPException(status_code=400, detail="El nuevo nombre de usuario ya está en uso")

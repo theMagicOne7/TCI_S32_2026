@@ -97,7 +97,7 @@ export function AppLayout({
     const token = localStorage.getItem('token_acceso');
 
     try {
-      const res = await fetch('http://localhost:8001/usuarios', {
+      const res = await fetch('/usuarios', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
