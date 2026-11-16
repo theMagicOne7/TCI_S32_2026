@@ -43,6 +43,8 @@ export function RepuestosPage() {
     if (!repuesto) return;
     if (cantidadAConsumir <= 0 || cantidadAConsumir > repuesto.stock_disponible) return;
 
+    if (!maquinaVinculada.trim() || !motivoUso.trim()) return;
+
     // 👇 3. Actualizamos el stock usando la función global 👇
     const repuestoActualizado = {
       ...repuesto,
@@ -190,6 +192,10 @@ export function RepuestosPage() {
           esModoOscuro={esModoOscuro}
           cantidadAConsumir={cantidadAConsumir}
           mensajeConsumo={mensajeConsumo}
+          maquinaVinculada={maquinaVinculada}
+          motivoUso={motivoUso}
+          onMaquinaChange={setMaquinaVinculada}
+          onMotivoChange={setMotivoUso}
           onIncrementar={() => setCantidadAConsumir((c) => Math.min(repuesto.stock_disponible, c + 1))}
           onDecrementar={() => setCantidadAConsumir((c) => Math.max(1, c - 1))}
           onCambioCantidad={setCantidadAConsumir}

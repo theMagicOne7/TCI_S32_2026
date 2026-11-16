@@ -25,7 +25,7 @@ export const UsuariosAdminPage: React.FC = () => {
   const obtenerUsuarios = async () => {
     try {
       const token = localStorage.getItem("token_acceso");
-      const response = await fetch('http://localhost:8001/usuarios', {
+      const response = await fetch('/usuarios', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -53,7 +53,7 @@ export const UsuariosAdminPage: React.FC = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token_acceso");
-      const endpoint = usernameOriginal ? `http://localhost:8001/usuarios/${usernameOriginal}` : 'http://localhost:8001/usuarios';
+      const endpoint = usernameOriginal ? `/usuarios/${usernameOriginal}` : '/usuarios';
       const method = usernameOriginal ? 'PUT' : 'POST';
 
       const bodyData: any = {
@@ -115,7 +115,7 @@ export const UsuariosAdminPage: React.FC = () => {
 
     try {
       const token = localStorage.getItem("token_acceso");
-      const response = await fetch(`http://localhost:8001/usuarios/${username}`, {
+      const response = await fetch(`/usuarios/${username}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

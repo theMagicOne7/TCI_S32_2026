@@ -40,6 +40,10 @@ export function RepuestoCard({
   const esStockCritico = stock > 0 && stock <= UMBRAL_MINIMO;
   const saldoInsuficiente = cantidadAConsumir > stock || cantidadAConsumir <= 0;
 
+// 👇 NUEVO: Validación de campos obligatorios para la auditoría
+  const faltaCompletarCampos = !maquinaVinculada.trim() || !motivoUso.trim();
+  const deshabilitarRegistro = saldoInsuficiente || faltaCompletarCampos;
+
   // Cálculo consolidado de estado del semáforo
   const estadoBadge = stock > UMBRAL_MINIMO
     ? { texto: 'Stock Óptimo', bg: '#dcfce7', color: '#15803d' }
@@ -224,9 +228,16 @@ export function RepuestoCard({
             </p>
           )}
 
+          {/* 👇 NUEVO: Aviso si faltan campos obligatorios 👇 */}
+          {faltaCompletarCampos && (
+            <p style={{ color: '#f59e0b', fontSize: '0.78rem', fontWeight: 700, margin: '0 0 10px 0', textAlign: 'right' }}>
+              ⚠️ Complete la máquina y el motivo para registrar el uso.
+            </p>
+          )}
+
           <button
             onClick={onConfirmarConsumo}
-            disabled={saldoInsuficiente}
+            disabled={deshabilitarRegistro}
             style={{
               width: '100%',
               padding: '12px',
@@ -240,9 +251,9 @@ export function RepuestoCard({
               borderRadius: '8px',
               fontWeight: 700,
               fontSize: '0.95rem',
-              cursor: saldoInsuficiente ? 'not-allowed' : 'pointer',
+              cursor: deshabilitarRegistro ? 'not-allowed' : 'pointer',
               transition: 'background 0.2s, opacity 0.2s',
-              boxShadow: saldoInsuficiente ? 'none' : '0 4px 10px rgba(13, 148, 136, 0.2)'
+              boxShadow: deshabilitarRegistro ? 'none' : '0 4px 10px rgba(13, 148, 136, 0.2)'
             }}
           >
             Registrar Uso de Repuesto (-{cantidadAConsumir} u.)
