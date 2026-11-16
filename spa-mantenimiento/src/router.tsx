@@ -11,6 +11,7 @@ import { RecepcionPage } from './pages/RecepcionPage';
 import { SimuladorPage } from './pages/SimuladorPage';
 import { NuevaIncidenciaPage } from './pages/NuevaIncidenciaPage';
 import { AuditoriaIncidenciasPage } from './pages/AuditoriaIncidenciasPage';
+import { UsuariosAdminPage } from './pages/UsuariosAdminPage';
 
 interface RouterConfigProps {
   tema: TemaPaleta;
@@ -55,6 +56,13 @@ export const createAppRouter = ({
           path: 'recepcion',
           element: <RecepcionPage/>
         },
+        // 👇 RUTA DE GESTIÓN DE PERSONAL / USUARIOS 👇
+        {
+          path: 'usuarios',
+          element: <UsuariosAdminPage />
+        },
+        // 👆 -------------------------------------- 👆
+        
         // 👇 2. NUEVAS RUTAS DE AUDITORÍA AISLADAS POR DOMINIO 👇
         {
           path: 'auditoria/deposito',
