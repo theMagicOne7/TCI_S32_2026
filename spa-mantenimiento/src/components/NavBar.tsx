@@ -10,7 +10,9 @@ interface NavBarProps {
   esModoOscuro: boolean;
   onToggleTema: () => void;
   usuarioActual: UsuarioPlanta;
+  rol: string;
   onCambiarUsuario: (usuario: UsuarioPlanta) => void;
+  puedeCambiarUsuario?: boolean;
     // 👇 2. Agregamos la propiedad incidencias
   incidencias: Incidencia[]; 
 }
@@ -20,8 +22,9 @@ export function NavBar({
   esModoOscuro,
   onToggleTema,
   usuarioActual,
+  rol, // 👈 Si agregas 'rol' a las props
   onCambiarUsuario,
-  // 👇 3. Recibimos incidencias
+  puedeCambiarUsuario = false,
   incidencias 
 }: NavBarProps) {
   const getLinkStyle = ({ isActive }: { isActive: boolean }) => ({
@@ -40,6 +43,12 @@ export function NavBar({
     // LÓGICA DE PERMISOS PARA LA BARRA DE NAVEGACIÓN
   const esDireccion = usuarioActual.area === 'direccion';
   const esAuditorMantenimiento = usuarioActual.area === 'mantenimiento' || esDireccion;
+
+  // Validación de permisos de administración de personal (Ema o Cecilia)
+  const esEmaSupervisor = usuarioActual.rol === 'supervisor';
+  const esCeci = ['ceci', 'ceciliaballarre'].includes(usuarioActual.nombre.toLowerCase());
+  const tienePermisosAdmin = esEmaSupervisor || esCeci;
+
 
   // 👇 4. LÓGICA DEL GLOBITO: Contamos solo las "pendientes" según el rol
   const incidenciasPendientes = (incidencias || []).filter(inc => {
@@ -101,58 +110,62 @@ export function NavBar({
 
         {/* Controles de Sesión / Turno y Tema */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: esModoOscuro ? '#061b24' : '#f8fafc',
-              padding: '6px 10px',
-              borderRadius: '8px',
-              border: `1px solid ${tema.borde}`
-            }}
-          >
-            <span style={{ fontSize: '0.75rem', color: tema.textoSecundario }}>👤</span>
-            <select
-              value={usuarioActual.id}
-              onChange={(e) => {
-                const seleccionado = PERSONAL_PLANTA.find((u) => u.id === e.target.value);
-                if (seleccionado) onCambiarUsuario(seleccionado);
-              }}
+          {/* Lista desplegable visible ÚNICAMENTE para Supervisor / Encargado */}
+          {puedeCambiarUsuario && (
+            <div
               style={{
-                background: tema.fondoTarjeta,
-                color: tema.textoPrincipal,
-                border: `1px solid ${tema.borde}`,
-                borderRadius: '6px',
-                padding: '4px 6px',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                outline: 'none'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: esModoOscuro ? '#061b24' : '#f8fafc',
+                padding: '6px 10px',
+                borderRadius: '8px',
+                border: `1px solid ${tema.borde}`
               }}
             >
-                            {['produccion', 'mantenimiento', 'deposito', 'direccion'].map((areaStr) => {
-                const empleadosArea = PERSONAL_PLANTA.filter((u) => u.area === areaStr);
-                if (empleadosArea.length === 0) return null;
+              <span style={{ fontSize: '0.75rem', color: tema.textoSecundario }}>👤</span>
+              <select
+                value={usuarioActual.id}
+                onChange={(e) => {
+                  const seleccionado = PERSONAL_PLANTA.find((u) => u.id === e.target.value);
+                  if (seleccionado) onCambiarUsuario(seleccionado);
+                }}
+                style={{
+                  background: tema.fondoTarjeta,
+                  color: tema.textoPrincipal,
+                  border: `1px solid ${tema.borde}`,
+                  borderRadius: '6px',
+                  padding: '4px 6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                              {['produccion', 'mantenimiento', 'deposito', 'direccion'].map((areaStr) => {
+                  const empleadosArea = PERSONAL_PLANTA.filter((u) => u.area === areaStr);
+                  if (empleadosArea.length === 0) return null;
 
-                return (
-                  <optgroup key={areaStr} label={`📍 ÁREA: ${areaStr.toUpperCase()}`}>
-                    {empleadosArea.map((u) => {
-                      const textoRol = u.rol === 'encargado' 
-                        ? `encargado de ${areaStr}` 
-                        : u.rol;
-                      
-                      return (
-                        <option key={u.id} value={u.id}>
-                          {u.nombre} ({textoRol})
-                        </option>
-                      );
-                    })}
-                  </optgroup>
-                );
-              })}
-            </select>
-          </div>
+                  return (
+                    <optgroup key={areaStr} label={`📍 ÁREA: ${areaStr.toUpperCase()}`}>
+                      {empleadosArea.map((u) => {
+                        const textoRol =
+                          u.rol === 'encargado' 
+                          ? `encargado de ${areaStr}` 
+                          : u.rol;
+                        
+                        return (
+                          <option key={u.id} value={u.id}>
+                            {u.nombre} ({textoRol})
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                  );
+                })}
+              </select>
+            </div>
+          )}
 
           <button
             onClick={onToggleTema}
@@ -230,6 +243,16 @@ export function NavBar({
             </span>
           )}
         </NavLink>
+
+        
+        {/* 👥 ENLACE CONDICIONAL DE ADMINISTRACIÓN DE PERSONAL */}
+          {((typeof rol === 'string' && ['Gerente', 'Supervisor', 'admin'].includes(rol.toLowerCase())) ||
+          (usuarioActual && typeof usuarioActual === 'object' && 'rol' in usuarioActual && ['gerente', 'supervisor', 'admin'].includes(String((usuarioActual as any).rol).toLowerCase())) ||
+          tienePermisosAdmin) && (  
+            <NavLink to="/usuarios" style={getLinkStyle}>
+              👥 Personal
+            </NavLink>
+          )}
       </nav>
     </header>
   );

@@ -16,9 +16,19 @@ interface RouterConfigProps {
   tema: TemaPaleta;
   esModoOscuro: boolean;
   onToggleTema: () => void;
+  usuario: string | null;
+  rol: string | null;
+  onCerrarSesion: () => void;
 }
 
-export const createAppRouter = ({ tema, esModoOscuro, onToggleTema }: RouterConfigProps) =>
+export const createAppRouter = ({
+  tema,
+  esModoOscuro,
+  onToggleTema,
+  usuario,
+  rol,
+  onCerrarSesion
+}: RouterConfigProps) =>
   createBrowserRouter([
     {
       path: '/',
@@ -27,6 +37,9 @@ export const createAppRouter = ({ tema, esModoOscuro, onToggleTema }: RouterConf
           tema={tema}
           esModoOscuro={esModoOscuro}
           onToggleTema={onToggleTema}
+          usuario={usuario}
+          rol={rol}
+          onCerrarSesion={onCerrarSesion}
         />
       ),
       children: [

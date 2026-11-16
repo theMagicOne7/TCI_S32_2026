@@ -12,6 +12,10 @@ class Usuario(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(unique=True, index=True)
     
+    # 👈 Reemplazamos nombre_completo por apellido y nombre separados
+    apellido: Optional[str] = Field(default=None)
+    nombre: Optional[str] = Field(default=None)
+    
     # OWASP: Jamás texto plano, solo el hash de bcrypt
     hashed_password: str 
     

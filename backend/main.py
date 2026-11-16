@@ -39,9 +39,11 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Permitir peticiones desde el frontend en React (Vite / Docker)
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost"],
+    allow_origins=["*"],  # Permite cualquier origen temporalmente
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -155,6 +157,7 @@ def crear_nuevo_usuario(
         )
 
     nuevo_username = datos.get("username")
+    nombre_completo = datos.get("nombre_completo", nuevo_username) # 👈 Si no se envía, toma el username por defecto
     nueva_password = datos.get("password")
     nuevo_rol = datos.get("rol")
 
@@ -177,9 +180,11 @@ def crear_nuevo_usuario(
     clave_hasheada = pwd_context.hash(nueva_password)
 
     nuevo_usuario = Usuario(
-        username=nuevo_username,
-        hashed_password=clave_hasheada,
-        rol=rol_enum
+        username=datos.username,
+        apellido=datos.apellido,
+        nombre=datos.nombre,
+        hashed_password=pwd_context.hash(datos.password),
+        rol=datos.rol
     )
     session.add(nuevo_usuario)
     session.commit()
@@ -188,4 +193,116 @@ def crear_nuevo_usuario(
     return {
         "mensaje": f"Usuario '{nuevo_usuario.username}' creado exitosamente por {usuario_actual.username}",
         "rol": nuevo_usuario.rol.value
+    }
+
+@app.delete("/usuarios/{username_a_eliminar}", status_code=200)
+def eliminar_usuario(
+    username_a_eliminar: str,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session)
+):
+    """Permite únicamente a Ema (Supervisor) o a Cecilia Ballarre eliminar usuarios"""
+    es_ema_supervisor = usuario_actual.rol == RolUsuario.SUPERVISOR
+    es_ceci = usuario_actual.username.lower() in ["ceci", "ceciliaballarre"]
+
+    if not (es_ema_supervisor or es_ceci):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: Solo Ema (Supervisor) o Cecilia Ballarre pueden eliminar usuarios."
+        )
+
+    # Evitar que el usuario se elimine a sí mismo por accidente
+    if usuario_actual.username.lower() == username_a_eliminar.lower():
+        raise HTTPException(
+            status_code=400,
+            detail="No puedes eliminar tu propia cuenta de usuario activa."
+        )
+
+    # Buscar el usuario a eliminar en la base de datos
+    user_db = session.exec(select(Usuario).where(Usuario.username == username_a_eliminar)).first()
+    if not user_db:
+        raise HTTPException(status_code=404, detail="El usuario no existe")
+
+    # Eliminar de la base de datos
+    session.delete(user_db)
+    session.commit()
+
+    return {"mensaje": f"Usuario '{username_a_eliminar}' eliminado exitosamente"}
+
+@app.get("/usuarios")
+def listar_usuarios(
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session)
+):
+    usuarios = session.exec(select(Usuario)).all()
+    # Mapeamos los campos correctamente por separado
+    return [
+        {
+            "username": u.username,
+            "apellido": u.apellido,
+            "nombre": u.nombre,
+            "rol": u.rol.value if hasattr(u.rol, "value") else u.rol,
+            "bloqueado": u.bloqueado,
+            "intentos_fallidos": u.intentos_fallidos
+        }
+        for u in usuarios
+    ]
+
+@app.put("/usuarios/{username_a_editar}")
+def editar_usuario(
+    username_a_editar: str,
+    datos: dict,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session)
+):
+    es_ema_supervisor = usuario_actual.rol == RolUsuario.SUPERVISOR
+    es_ceci = usuario_actual.username.lower() in ["ceci", "ceciliaballarre"]
+
+    if not (es_ema_supervisor or es_ceci):
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: Solo Ema (Supervisor) o Cecilia Ballarre pueden editar usuarios."
+        )
+
+    user_db = session.exec(select(Usuario).where(Usuario.username == username_a_editar)).first()
+    if not user_db:
+        raise HTTPException(status_code=404, detail="El usuario no existe")
+
+    nuevo_username = datos.get("username")
+    nueva_password = datos.get("password")
+    nuevo_rol = datos.get("rol")
+    nuevo_apellido = datos.get("apellido")
+    nuevo_nombre = datos.get("nombre")
+
+    if nuevo_username and nuevo_username != user_db.username:
+        existente = session.exec(select(Usuario).where(Usuario.username == nuevo_username)).first()
+        if existente:
+            raise HTTPException(status_code=400, detail="El nuevo nombre de usuario ya está en uso")
+        user_db.username = nuevo_username
+
+    if nuevo_apellido is not None:
+        user_db.apellido = nuevo_apellido
+        
+    if nuevo_nombre is not None:
+        user_db.nombre = nuevo_nombre
+
+    if nueva_password:
+        user_db.hashed_password = pwd_context.hash(nueva_password)
+
+    if nuevo_rol:
+        try:
+            user_db.rol = RolUsuario(nuevo_rol)
+        except ValueError:
+            roles_validos = [r.value for r in RolUsuario]
+            raise HTTPException(status_code=400, detail=f"Rol inválido. Opciones: {roles_validos}")
+
+    session.commit()
+    session.refresh(user_db)
+
+    return {
+        "mensaje": f"Usuario '{user_db.username}' actualizado exitosamente",
+        "usuario": user_db.username,
+        "rol": user_db.rol.value,
+        "apellido": user_db.apellido,
+        "nombre": user_db.nombre
     }
