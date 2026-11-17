@@ -28,7 +28,7 @@ export const PERSONAL_PLANTA: readonly UsuarioPlanta[] = [
 
     // --- DIRECCIÓN Y CONTROL GENERAL ---
     { id: 'u10', nombre: 'Ing. Cecilia Ballarre', legajo: 'SUP-9998', rol: 'supervisor', area: 'direccion' }, 
-    { id: 'u11', nombre: 'Ger. Ema', legajo: 'DIR-9999', rol: 'gerente', area: 'direccion' } 
+    { id: 'u11', nombre: 'Ger. Alejandro Montes', legajo: 'DIR-9999', rol: 'gerente', area: 'direccion' } 
 ];
 
 // CATALOGO INICIAL DE REPUESTOS EN MEMORIA
