@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  db-mantenimiento:
+    image: postgres:16-alpine
+    container_name: prueba-tci-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mantenimiento_db
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_data_planta:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mantenimiento_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend-mantenimiento:
+    build: ./backend
+    container_name: tci-backend
+    environment:
+      DATABASE_URL: postgresql+pg8000://postgres:postgres@db-mantenimiento:5432/mantenimiento_db
+    ports:
+      - "8001:8000"
+    depends_on:
+      db-mantenimiento:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend-mantenimiento:
+    build: ./spa-mantenimiento
+    container_name: tci-frontend-planta
+    ports:
+      - "8080:80" # Mapea el puerto 8080 de tu PC al 80 del contenedor
+    depends_on:
+      - backend-mantenimiento
+    restart: unless-stopped
+
+volumes:
+  postgres_data_planta:
