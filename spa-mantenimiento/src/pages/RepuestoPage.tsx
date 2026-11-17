@@ -6,9 +6,9 @@ import { type Repuesto, type MovimientoStock } from '../types/index';
 import { RepuestoCard } from '../components/RepuestoCard';
 import type { LayoutContextType } from '../types/index';
 import { CODIGOS_CONOCIDOS } from '../constants/mock';
-import { Html5Qrcode } from 'html5-qrcode';
 
 export function RepuestosPage() {
+  // 👇 1. Ahora traemos 'repuestos' y 'actualizarRepuesto' del estado global 👇
   const { tema, esModoOscuro, agregarMovimiento, usuarioActual, repuestos, actualizarRepuesto } = useOutletContext<LayoutContextType>();
 
   const [codigoBuscado, setCodigoBuscado] = useState('FIL-001');
@@ -16,13 +16,11 @@ export function RepuestosPage() {
   const [error, setError] = useState<string | null>(null);
   const [mensajeConsumo, setMensajeConsumo] = useState<string | null>(null);
   const [cantidadAConsumir, setCantidadAConsumir] = useState<number>(1);
+    // (Nota: Estos estados deberías pasárselos como props a tu RepuestoCard para que los inputs funcionen)
   const [maquinaVinculada, setMaquinaVinculada] = useState<string>('');
   const [motivoUso, setMotivoUso] = useState<string>('');
 
-  // Estados para el control de la cámara y el escáner
-  const [scannerActivo, setScannerActivo] = useState(false);
-  const [html5QrCode, setHtml5QrCode] = useState<Html5Qrcode | null>(null);
-
+  // 👇 2. La consulta ahora busca en memoria, no en internet 👇
   const consultarRepuesto = (codigo: string) => {
     const codLimpio = codigo.trim().toUpperCase();
     if (!codLimpio) return;
@@ -30,7 +28,7 @@ export function RepuestosPage() {
     setError(null);
     setMensajeConsumo(null);
     
-    
+    // Buscamos en el array global que provee AppLayout
     const encontrado = repuestos.find(r => r.codigo === codLimpio);
 
     if (encontrado) {
@@ -40,61 +38,10 @@ export function RepuestosPage() {
       setError(`El código ${codLimpio} no existe en el sistema.`);
     }
   };
-  
-  const toggleScanner = async () => {
-    if (scannerActivo) {
-      // Apagar cámara
-      if (html5QrCode && html5QrCode.isScanning) {
-        try {
-          await html5QrCode.stop();
-        } catch (err) {
-          console.error("Error al detener el escáner", err);
-        }
-      }
-      setScannerActivo(false);
-    } else {
-      // Encender cámara
-      setScannerActivo(true);
-      setError(null);
-      setTimeout(async () => {
-        try {
-          const qrCodeInstance = new Html5Qrcode("reader-container");
-          setHtml5QrCode(qrCodeInstance);
-
-          await qrCodeInstance.start(
-            { facingMode: "environment" }, // Usa la cámara trasera por defecto
-            {
-              fps: 10,
-              qrbox: { width: 250, height: 250 }
-            },
-            (decodedText: string) => {
-              // Éxito al leer el código QR o de barras
-              setCodigoBuscado(decodedText);
-              consultarRepuesto(decodedText);
-              
-              // Apagar el escáner automáticamente tras una lectura exitosa
-              qrCodeInstance.stop().then(() => {
-                setScannerActivo(false);
-              }).catch(() => {});
-            },
-            () => {
-              // Ignora errores de cuadro por cuadro mientras busca
-            }
-          );
-        } catch (err) {
-          console.error("No se pudo iniciar la cámara", err);
-          setError("No se pudo acceder a la cámara del dispositivo.");
-          setScannerActivo(false);
-        }
-      }, 200);
-    }
-  };
 
   const registrarConsumo = () => {
     if (!repuesto) return;
     if (cantidadAConsumir <= 0 || cantidadAConsumir > repuesto.stock_disponible) return;
-
-    if (!maquinaVinculada.trim() || !motivoUso.trim()) return;
 
     // 👇 3. Actualizamos el stock usando la función global 👇
     const repuestoActualizado = {
@@ -161,47 +108,12 @@ export function RepuestosPage() {
           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)'
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
         <label
           htmlFor="input-qr"
-          style={{ fontSize: '0.85rem', fontWeight: 700, color: tema.textoPrincipal }}
+          style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, marginBottom: '8px', color: tema.textoPrincipal }}
         >
           Código QR simulado:
         </label>
-        
-          {/* Botón para activar / desactivar la cámara */}
-          <button
-            onClick={toggleScanner}
-            style={{
-              background: scannerActivo ? '#dc2626' : '#0d9488',
-              color: '#fff',
-              border: 'none',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              fontWeight: 600,
-              fontSize: '0.8rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            {scannerActivo ? '❌ Cerrar Cámara' : '📷 Escanear con Cámara'}
-          </button>
-        </div>
-
-        {/* Contenedor obligatorio para la visualización del streaming de la cámara */}
-        <div 
-          id="reader-container" 
-          style={{ 
-            width: '100%', 
-            maxWidth: '360px', 
-            margin: scannerActivo ? '12px auto' : '0 auto', 
-            display: scannerActivo ? 'block' : 'none',
-            borderRadius: '8px',
-            overflow: 'hidden'
-          }}
-        ></div>
         
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: '100%', boxSizing: 'border-box' }}>
           <input
@@ -248,10 +160,6 @@ export function RepuestosPage() {
           {CODIGOS_CONOCIDOS.map((cod) => (
             <code
               key={cod}
-              onClick={() => {
-                setCodigoBuscado(cod);
-                consultarRepuesto(cod);
-              }}
               style={{
                 background: esModoOscuro ? '#061b24' : '#f1f5f9',
                 color: tema.acento,
@@ -259,8 +167,7 @@ export function RepuestosPage() {
                 borderRadius: '4px',
                 fontSize: '0.78rem',
                 border: `1px solid ${tema.borde}`,
-                fontFamily: 'monospace',
-                cursor: 'pointer'
+                fontFamily: 'monospace'
               }}
             >
               {cod}
@@ -278,16 +185,11 @@ export function RepuestosPage() {
 
       {repuesto && !error && (
         <RepuestoCard
-        key={repuesto.codigo}
           repuesto={repuesto}
           tema={tema}
           esModoOscuro={esModoOscuro}
           cantidadAConsumir={cantidadAConsumir}
           mensajeConsumo={mensajeConsumo}
-          maquinaVinculada={maquinaVinculada}
-          motivoUso={motivoUso}
-          onMaquinaChange={setMaquinaVinculada}
-          onMotivoChange={setMotivoUso}
           onIncrementar={() => setCantidadAConsumir((c) => Math.min(repuesto.stock_disponible, c + 1))}
           onDecrementar={() => setCantidadAConsumir((c) => Math.max(1, c - 1))}
           onCambioCantidad={setCantidadAConsumir}
