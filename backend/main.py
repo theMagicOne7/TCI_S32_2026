@@ -1,17 +1,38 @@
-from fastapi import FastAPI, HTTPException, Request, Depends
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
-from sqlmodel import Session, create_engine, select
+from sqlmodel import SQLModel, Session, create_engine, select, delete, or_
 from passlib.context import CryptContext
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from typing import List
 import jwt
-import pyotp
 import os
 from datetime import datetime, timedelta, timezone
 
-from models import Usuario, RolUsuario
+from models import (
+    RolUsuario,
+    Usuario,
+    Repuesto,
+    RepuestoCreate,
+    RepuestoUpdate,
+    Reparacion,
+    ConsumoRepuesto,
+    ConsumoRequest,
+    ConsumoResponse,
+    ErrorResponse,
+    EstadoIncidencia,
+    Incidencia,
+    IncidenciaCreate,
+    IncidenciaUpdate,
+    EstadoMaquina,
+    Maquina,
+    MaquinaCreate,
+    MaquinaUpdate,
+)
 
 # ==========================================
 # 1. CONFIGURACIÓN DE BASE DE DATOS Y SEGURIDAD
@@ -30,20 +51,47 @@ ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # ==========================================
-# 2. INICIALIZACIÓN DE FASTAPI, CORS Y RATE LIMIT
+# 2. LIFESPAN: CREACIÓN DE TABLAS Y ÚNICO SUPERVISOR INICIAL
+# ==========================================
+
+def seed_initial_data() -> None:
+    with Session(engine) as session:
+        # Único usuario administrador inicial (Supervisor) si la base está vacía.
+        # Máquinas, repuestos, incidencias y reparaciones arrancan vacíos.
+        if not session.exec(select(Usuario.id)).first():
+            usuario_principal = Usuario(
+                username="ceci",
+                nombre="Cecilia",
+                apellido="Ballarre",
+                hashed_password=pwd_context.hash("admin123"),
+                rol=RolUsuario.SUPERVISOR,
+            )
+            session.add(usuario_principal)
+            session.commit()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    SQLModel.metadata.create_all(engine)
+    seed_initial_data()
+    yield
+
+
+# ==========================================
+# 3. INICIALIZACIÓN DE FASTAPI, CORS Y RATE LIMIT
 # ==========================================
 limiter = Limiter(key_func=get_remote_address)
-app = FastAPI(title="API Gestión Planta Farmacéutica - Auth & RBAC")
+app = FastAPI(
+    title="API Gestión Planta Farmacéutica - Auth, RBAC e Inventario",
+    lifespan=lifespan,
+)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Permitir peticiones desde el frontend en React (Vite / Docker)
-
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permite cualquier origen temporalmente
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -54,12 +102,13 @@ def get_session():
         yield session
 
 # ==========================================
-# 3. DEPENDENCIA DE VALIDACIÓN DE SESIÓN (JWT)
+# 4. DEPENDENCIA DE VALIDACIÓN DE SESIÓN (JWT)
 # ==========================================
 def obtener_usuario_actual(
     token: str = Depends(oauth2_scheme),
     session: Session = Depends(get_session)
 ) -> Usuario:
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
@@ -73,8 +122,30 @@ def obtener_usuario_actual(
         raise HTTPException(status_code=401, detail="Usuario no autorizado o bloqueado")
     return user
 
+def verificar_supervisor(usuario_actual: Usuario) -> None:
+    if usuario_actual.rol != RolUsuario.SUPERVISOR:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso denegado: Se requiere rol de Supervisor para gestionar personal.",
+        )
+
+def buscar_maquina_por_referencia(session: Session, referencia: str) -> Maquina | None:
+    """Busca una única máquina en SQL por código o nombre sin traer toda la tabla."""
+    texto = referencia.strip()
+    if not texto:
+        return None
+    return session.exec(
+        select(Maquina).where(
+            or_(
+                Maquina.codigo.ilike(texto),
+                Maquina.nombre.ilike(f"%{texto}%"),
+            )
+        )
+    ).first()
+
+
 # ==========================================
-# 4. ENDPOINTS DE AUTENTICACIÓN Y GESTIÓN
+# 5. ENDPOINTS DE AUTENTICACIÓN Y GESTIÓN DE PERSONAL
 # ==========================================
 @app.get("/health")
 def health_check():
@@ -86,7 +157,6 @@ def health_check():
 def login(request: Request, datos: dict, session: Session = Depends(get_session)):
     username = datos.get("username")
     password = datos.get("password")
-    codigo_2fa = datos.get("codigo_2fa")
     token_captcha = datos.get("token_captcha")
 
     # 1. Verificación de humano (Captcha)
@@ -113,19 +183,12 @@ def login(request: Request, datos: dict, session: Session = Depends(get_session)
         session.commit()
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
-    # 5. Verificación de doble factor (2FA con TOTP) si el usuario lo tiene activo
-    if user.secreto_2fa:
-        if not codigo_2fa:
-            raise HTTPException(status_code=401, detail="Se requiere código de doble factor (2FA)")
-        totp = pyotp.TOTP(user.secreto_2fa)
-        if not totp.verify(codigo_2fa):
-            raise HTTPException(status_code=401, detail="Código 2FA incorrecto")
+    # 5. Login exitoso: resetear contador de errores
+    if user.intentos_fallidos != 0:
+        user.intentos_fallidos = 0
+        session.commit()
 
-    # 6. Login exitoso: resetear contador de errores
-    user.intentos_fallidos = 0
-    session.commit()
-
-    # 7. Emitir JWT para mantener la sesión entre requests
+    # 6. Emitir JWT para mantener la sesión entre requests
     payload = {
         "sub": user.username,
         "rol": user.rol.value,
@@ -137,6 +200,8 @@ def login(request: Request, datos: dict, session: Session = Depends(get_session)
         "access_token": token,
         "token_type": "bearer",
         "usuario": user.username,
+        "nombre": user.nombre,
+        "apellido": user.apellido,
         "rol": user.rol.value
     }
 
@@ -146,20 +211,12 @@ def crear_nuevo_usuario(
     usuario_actual: Usuario = Depends(obtener_usuario_actual),
     session: Session = Depends(get_session)
 ):
-    """Permite únicamente a Ema (Supervisor) o a Cecilia Ballarre registrar nuevos usuarios"""
-    es_ema_supervisor = usuario_actual.rol == RolUsuario.SUPERVISOR
-    es_ceci = usuario_actual.username.lower() in ["ceci", "ceciliaballarre"]
-
-    if not (es_ema_supervisor or es_ceci):
-        raise HTTPException(
-            status_code=403,
-            detail="Acceso denegado: Solo Ema (Supervisor) o Cecilia Ballarre pueden registrar nuevos usuarios."
-        )
+    """Permite únicamente a usuarios con rol Supervisor registrar nuevos usuarios"""
+    verificar_supervisor(usuario_actual)
 
     nuevo_username = (datos.get("username") or "").strip()
     nueva_password = datos.get("password")
     nuevo_rol = datos.get("rol")
-    # Soporta tanto nombre/apellido separados como nombre_completo
     nombre = (datos.get("nombre") or datos.get("nombre_completo") or nuevo_username).strip()
     apellido = (datos.get("apellido") or "").strip()
 
@@ -175,18 +232,15 @@ def crear_nuevo_usuario(
 
     # Verificar que no exista un usuario duplicado
     existente = session.exec(
-        select(Usuario).where(Usuario.username.ilike(nuevo_username))).first()
+        select(Usuario.id).where(Usuario.username.ilike(nuevo_username))).first()
     if existente:
         raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso")
-
-    # Hashear la nueva contraseña antes de guardar
-    clave_hasheada = pwd_context.hash(nueva_password)
 
     nuevo_usuario = Usuario(
         username=nuevo_username,
         apellido=apellido,
         nombre=nombre,
-        hashed_password=clave_hasheada,
+        hashed_password=pwd_context.hash(nueva_password),
         rol=rol_enum
     )
     session.add(nuevo_usuario)
@@ -195,6 +249,15 @@ def crear_nuevo_usuario(
 
     return {
         "mensaje": f"Usuario '{nuevo_usuario.username}' creado exitosamente por {usuario_actual.username}",
+        "usuario": {
+            "id": nuevo_usuario.id,
+            "username": nuevo_usuario.username,
+            "apellido": nuevo_usuario.apellido,
+            "nombre": nuevo_usuario.nombre,
+            "rol": nuevo_usuario.rol.value,
+            "bloqueado": nuevo_usuario.bloqueado,
+            "intentos_fallidos": nuevo_usuario.intentos_fallidos,
+        },
         "rol": nuevo_usuario.rol.value
     }
 
@@ -204,15 +267,8 @@ def eliminar_usuario(
     usuario_actual: Usuario = Depends(obtener_usuario_actual),
     session: Session = Depends(get_session)
 ):
-    """Permite únicamente a Ema (Supervisor) o a Cecilia Ballarre eliminar usuarios"""
-    es_ema_supervisor = usuario_actual.rol == RolUsuario.SUPERVISOR
-    es_ceci = usuario_actual.username.lower() in ["ceci", "ceciliaballarre"]
 
-    if not (es_ema_supervisor or es_ceci):
-        raise HTTPException(
-            status_code=403,
-            detail="Acceso denegado: Solo Ema (Supervisor) o Cecilia Ballarre pueden eliminar usuarios."
-        )
+    verificar_supervisor(usuario_actual)
 
     # Evitar que el usuario se elimine a sí mismo por accidente
     if usuario_actual.username.lower() == username_a_eliminar.lower():
@@ -222,14 +278,16 @@ def eliminar_usuario(
         )
 
     # Buscar el usuario a eliminar en la base de datos
-    user_db = session.exec(select(Usuario).where(Usuario.username == username_a_eliminar)).first()
-    if not user_db:
+    stmt = (
+        delete(Usuario)
+        .where(Usuario.username == username_a_eliminar)
+        .returning(Usuario.id)
+    )
+    eliminado = session.exec(stmt).first()
+    if not eliminado:
         raise HTTPException(status_code=404, detail="El usuario no existe")
 
-    # Eliminar de la base de datos
-    session.delete(user_db)
     session.commit()
-
     return {"mensaje": f"Usuario '{username_a_eliminar}' eliminado exitosamente"}
 
 @app.get("/usuarios")
@@ -237,10 +295,10 @@ def listar_usuarios(
     usuario_actual: Usuario = Depends(obtener_usuario_actual),
     session: Session = Depends(get_session)
 ):
-    usuarios = session.exec(select(Usuario)).all()
-    # Mapeamos los campos correctamente por separado
+    usuarios = session.exec(select(Usuario).order_by(Usuario.id)).all()
     return [
         {
+            "id": u.id,
             "username": u.username,
             "apellido": u.apellido,
             "nombre": u.nombre,
@@ -258,36 +316,48 @@ def editar_usuario(
     usuario_actual: Usuario = Depends(obtener_usuario_actual),
     session: Session = Depends(get_session)
 ):
-    es_ema_supervisor = usuario_actual.rol == RolUsuario.SUPERVISOR
-    es_ceci = usuario_actual.username.lower() in ["ceci", "ceciliaballarre"]
 
-    if not (es_ema_supervisor or es_ceci):
-        raise HTTPException(
-            status_code=403,
-            detail="Acceso denegado: Solo Ema (Supervisor) o Cecilia Ballarre pueden editar usuarios."
-        )
+    verificar_supervisor(usuario_actual)
 
-    user_db = session.exec(select(Usuario).where(Usuario.username == username_a_editar)).first()
-    if not user_db:
-        raise HTTPException(status_code=404, detail="El usuario no existe")
-
-    nuevo_username = datos.get("username")
+    nuevo_username = (datos.get("username") or "").strip() or None
     nueva_password = datos.get("password")
     nuevo_rol = datos.get("rol")
     nuevo_apellido = datos.get("apellido")
     nuevo_nombre = datos.get("nombre")
+    nuevo_bloqueado = datos.get("bloqueado")
 
-    if nuevo_username and nuevo_username.lower() != user_db.username.lower():
-        existente = session.exec(select(Usuario).where(Usuario.username == nuevo_username)).first()
-        if existente:
+    if nuevo_username and nuevo_username.lower() != username_a_editar.lower():
+        candidatos = session.exec(
+            select(Usuario).where(
+                or_(
+                    Usuario.username == username_a_editar,
+                    Usuario.username.ilike(nuevo_username),
+            )
+        )
+        ).all()
+        user_db = next((u for u in candidatos if u.username == username_a_editar), None)
+        if not user_db:
+            raise HTTPException(status_code=404, detail="El usuario no existe")
+        if any(u.id != user_db.id for u in candidatos):
             raise HTTPException(status_code=400, detail="El nuevo nombre de usuario ya está en uso")
         user_db.username = nuevo_username
+    else:
+        user_db = session.exec(
+            select(Usuario).where(Usuario.username == username_a_editar)
+        ).first()
+        if not user_db:
+            raise HTTPException(status_code=404, detail="El usuario no existe")
 
     if nuevo_apellido is not None:
         user_db.apellido = nuevo_apellido
-        
+
     if nuevo_nombre is not None:
         user_db.nombre = nuevo_nombre
+
+    if nuevo_bloqueado is not None:
+        user_db.bloqueado = bool(nuevo_bloqueado)
+        if not user_db.bloqueado:
+            user_db.intentos_fallidos = 0
 
     if nueva_password:
         user_db.hashed_password = pwd_context.hash(nueva_password)
@@ -307,5 +377,316 @@ def editar_usuario(
         "usuario": user_db.username,
         "rol": user_db.rol.value,
         "apellido": user_db.apellido,
-        "nombre": user_db.nombre
+        "nombre": user_db.nombre,
+        "bloqueado": user_db.bloqueado,
     }
+
+# ==========================================
+# 6. CRUD DE MÁQUINAS DE PLANTA
+# ==========================================
+
+@app.get("/maquinas", response_model=List[Maquina])
+def listar_maquinas(
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    return session.exec(select(Maquina).order_by(Maquina.codigo)).all()
+
+
+@app.post("/maquinas", response_model=Maquina, status_code=status.HTTP_201_CREATED)
+def crear_maquina(
+    datos: MaquinaCreate,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    codigo_norm = datos.codigo.strip().upper()
+    if session.get(Maquina, codigo_norm):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Ya existe una máquina con código '{codigo_norm}'.",
+        )
+
+    nueva = Maquina(
+        codigo=codigo_norm,
+        nombre=datos.nombre.strip(),
+        sector=datos.sector.strip(),
+        estado=datos.estado,
+    )
+    session.add(nueva)
+    session.commit()
+    session.refresh(nueva)
+    return nueva
+
+
+@app.patch("/maquinas/{codigo}", response_model=Maquina)
+def actualizar_maquina(
+    codigo: str,
+    datos: MaquinaUpdate,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    maquina = session.get(Maquina, codigo.strip().upper())
+    if not maquina:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Máquina no encontrada.")
+
+    if datos.nombre is not None:
+        maquina.nombre = datos.nombre.strip()
+    if datos.sector is not None:
+        maquina.sector = datos.sector.strip()
+    if datos.estado is not None:
+        maquina.estado = datos.estado
+
+    session.add(maquina)
+    session.commit()
+    session.refresh(maquina)
+    return maquina
+
+
+# ==========================================
+# 7. INVENTARIO DE REPUESTOS Y CONSUMOS (OPENAPI)
+# ==========================================
+
+@app.get("/repuestos", response_model=List[Repuesto])
+def listar_repuestos(
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    return session.exec(select(Repuesto).order_by(Repuesto.codigo)).all()
+
+
+@app.get(
+    "/repuestos/{codigo}",
+    response_model=Repuesto,
+    responses={404: {"model": ErrorResponse}},
+)
+def obtener_repuesto(
+    codigo: str,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    repuesto = session.get(Repuesto, codigo)
+    if not repuesto:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"error": f"Repuesto '{codigo}' no encontrado."},
+        )
+    return repuesto
+
+
+@app.post("/repuestos", response_model=Repuesto, status_code=status.HTTP_201_CREATED)
+def crear_repuesto(
+    datos: RepuestoCreate,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    codigo_norm = datos.codigo.strip().upper()
+    if session.get(Repuesto, codigo_norm):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"El repuesto '{codigo_norm}' ya existe en el inventario.",
+        )
+
+    nuevo = Repuesto(
+        codigo=codigo_norm,
+        nombre=datos.nombre.strip(),
+        stock_disponible=datos.stock_disponible,
+        ubicacion=datos.ubicacion.strip(),
+    )
+    session.add(nuevo)
+    session.commit()
+    session.refresh(nuevo)
+    return nuevo
+
+
+@app.patch(
+    "/repuestos/{codigo}",
+    response_model=Repuesto,
+    responses={404: {"model": ErrorResponse}},
+)
+def actualizar_repuesto(
+    codigo: str,
+    datos: RepuestoUpdate,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    repuesto = session.get(Repuesto, codigo)
+    if not repuesto:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"error": f"Repuesto '{codigo}' no encontrado."},
+        )
+
+    if datos.ubicacion is not None:
+        repuesto.ubicacion = datos.ubicacion.strip()
+    if datos.stock_disponible is not None:
+        repuesto.stock_disponible = datos.stock_disponible
+
+    session.add(repuesto)
+    session.commit()
+    session.refresh(repuesto)
+    return repuesto
+
+
+@app.post(
+    "/reparaciones/{reparacion_id}/consumos",
+    response_model=ConsumoResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        404: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+    },
+)
+def registrar_consumo_repuesto(
+    reparacion_id: int,
+    datos: ConsumoRequest,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    reparacion = session.get(Reparacion, reparacion_id)
+    if not reparacion:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"error": f"Reparación #{reparacion_id} no encontrada."},
+        )
+
+    repuesto = session.get(Repuesto, datos.codigo_repuesto)
+    if not repuesto:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"error": f"Repuesto '{datos.codigo_repuesto}' no encontrado."},
+        )
+
+    if repuesto.stock_disponible < datos.cantidad:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={
+                "error": f"Stock insuficiente para '{repuesto.codigo}'. Disponible: {repuesto.stock_disponible}, solicitado: {datos.cantidad}."
+            },
+        )
+
+    repuesto.stock_disponible -= datos.cantidad
+    consumo = ConsumoRepuesto(
+        reparacion_id=reparacion_id,
+        codigo_repuesto=repuesto.codigo,
+        cantidad_consumida=datos.cantidad,
+        stock_remanente=repuesto.stock_disponible,
+    )
+
+    session.add(repuesto)
+    session.add(consumo)
+    session.commit()
+    session.refresh(consumo)
+
+    return ConsumoResponse(
+        id_consumo=consumo.id,
+        reparacion_id=consumo.reparacion_id,
+        codigo_repuesto=consumo.codigo_repuesto,
+        cantidad_consumida=consumo.cantidad_consumida,
+        stock_remanente=consumo.stock_remanente,
+        timestamp=consumo.timestamp,
+    )
+
+
+# ==========================================
+# 8. CRUD DE INCIDENCIAS (FALLAS DE PLANTA)
+# ==========================================
+
+@app.get("/incidencias", response_model=List[Incidencia])
+def listar_incidencias(
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    return session.exec(select(Incidencia).order_by(Incidencia.id.desc())).all()
+
+
+@app.post("/incidencias", response_model=Incidencia, status_code=status.HTTP_201_CREATED)
+def crear_incidencia(
+    datos: IncidenciaCreate,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    nueva = Incidencia(
+        timestamp_creacion=datos.timestamp_creacion,
+        fecha=datos.fecha,
+        hora=datos.hora,
+        maquina=datos.maquina.strip(),
+        descripcion=datos.descripcion.strip(),
+        operario=datos.operario.strip(),
+        estado=EstadoIncidencia.PENDIENTE,
+    )
+    session.add(nueva)
+
+    # Pasar la máquina asociada a EN_REPARACION con búsqueda puntual en SQL
+    maq = buscar_maquina_por_referencia(session, datos.maquina)
+    if maq:
+        maq.estado = EstadoMaquina.EN_REPARACION
+        session.add(maq)
+
+    session.commit()
+    session.refresh(nueva)
+    return nueva
+
+
+@app.patch("/incidencias/{incidencia_id}", response_model=Incidencia)
+def actualizar_incidencia(
+    incidencia_id: int,
+    datos: IncidenciaUpdate,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    incidencia = session.get(Incidencia, incidencia_id)
+    if not incidencia:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incidencia no encontrada.")
+
+    if datos.estado is not None:
+        incidencia.estado = datos.estado
+    if datos.repuestos_utilizados_json is not None:
+        incidencia.repuestos_utilizados_json = datos.repuestos_utilizados_json
+    if datos.fecha_resolucion is not None:
+        incidencia.fecha_resolucion = datos.fecha_resolucion
+    if datos.hora_resolucion is not None:
+        incidencia.hora_resolucion = datos.hora_resolucion
+    if datos.tiempo_total_str is not None:
+        incidencia.tiempo_total_str = datos.tiempo_total_str
+
+    # Cuando el técnico (Mantenimiento) toma la falla en progreso, abre la Reparación real
+    if datos.estado == EstadoIncidencia.EN_PROGRESO:
+        reparacion = session.get(Reparacion, incidencia.id)
+        if not reparacion:
+            session.add(
+                Reparacion(
+                    id=incidencia.id,
+                    equipo=incidencia.maquina,
+                    descripcion=incidencia.descripcion,
+                    estado="ACTIVA",
+                )
+            )
+
+    # Cuando el técnico resuelve la falla, cierra la Reparación y devuelve la máquina a ACTIVA
+    elif datos.estado == EstadoIncidencia.RESUELTA:
+        reparacion = session.get(Reparacion, incidencia.id)
+        if reparacion:
+            reparacion.estado = "FINALIZADA"
+            session.add(reparacion)
+
+        maq = buscar_maquina_por_referencia(session, incidencia.maquina)
+        if maq:
+            maq.estado = EstadoMaquina.ACTIVA
+            session.add(maq)
+
+    # Cuando la reparación no tiene solución, cierra la Reparación y deja la máquina FUERA_DE_SERVICIO
+    elif datos.estado == EstadoIncidencia.SIN_SOLUCION:
+        reparacion = session.get(Reparacion, incidencia.id)
+        if reparacion:
+            reparacion.estado = "SIN_SOLUCION"
+            session.add(reparacion)
+
+        maq = buscar_maquina_por_referencia(session, incidencia.maquina)
+        if maq:
+            maq.estado = EstadoMaquina.FUERA_DE_SERVICIO
+            session.add(maq)
+
+    session.add(incidencia)
+    session.commit()
+    session.refresh(incidencia)
+    return incidencia

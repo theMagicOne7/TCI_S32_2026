@@ -1,8 +1,7 @@
 // CONTENEDOR GENERAL RESPONSIVE PARA PLANTA INDUSTRIAL
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-// 👇 IMPORTAMOS LOS TIPOS ACTUALIZADOS (Incluyendo Incidencia)
 import { 
   type TemaPaleta, 
   type MovimientoStock, 
@@ -10,9 +9,10 @@ import {
   type OrdenCompra, 
   type LayoutContextType, 
   type Repuesto,
-  type Incidencia // <-- Nuevo tipo importado
+  type Incidencia 
 } from '../types/index';
-import { PERSONAL_PLANTA, CATALOGO_REPUESTOS } from '../constants/mock'; 
+import { PERSONAL_PLANTA } from '../constants/mock';
+import { fetchRepuestos } from '../data';
 import { NavBar } from '../components/NavBar';
 
 interface AppLayoutProps {
@@ -24,39 +24,50 @@ interface AppLayoutProps {
 export function AppLayout({ tema, esModoOscuro, onToggleTema }: AppLayoutProps) {
   const [movimientos, setMovimientos] = useState<MovimientoStock[]>([]);
   const [usuarioActual, setUsuarioActual] = useState<UsuarioPlanta>(PERSONAL_PLANTA[0]);
-    const [ordenesCompra, setOrdenesCompra] = useState<OrdenCompra[]>([]);
-  const [repuestos, setRepuestos] = useState<Repuesto[]>(CATALOGO_REPUESTOS);
-  
-  // 👇 NUEVO: Estado Global para Incidencias 👇
+  const [ordenesCompra, setOrdenesCompra] = useState<OrdenCompra[]>([]);
+  const [repuestos, setRepuestos] = useState<Repuesto[]>([]);
   const [incidencias, setIncidencias] = useState<Incidencia[]>([]);
+
+  useEffect(() => {
+    let activo = true;
+    fetchRepuestos()
+      .then((lista) => {
+        if (activo) setRepuestos(lista);
+      })
+      .catch((err) => {
+        console.warn('[AppLayout] No se pudo cargar el inventario desde la API:', err);
+      });
+
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   const actualizarRepuesto = (repuestoModificado: Repuesto) => {
     setRepuestos((prev) => 
-      prev.map(r => r.codigo === repuestoModificado.codigo ? repuestoModificado : r)
+      prev.map((r) => (r.codigo === repuestoModificado.codigo ? repuestoModificado : r))
     );
   };
 
   const agregarMovimiento = (nuevo: MovimientoStock) => {
     setMovimientos((prev) => [nuevo, ...prev]);
   };
-  
+
   const agregarOrdenCompra = (nueva: OrdenCompra) => {
     setOrdenesCompra((prev) => [...prev, nueva]);
   };
 
   const actualizarOrdenCompra = (ocModificada: OrdenCompra) => {
-    setOrdenesCompra((prev) => prev.map(oc => oc.id === ocModificada.id ? ocModificada : oc));
+    setOrdenesCompra((prev) => prev.map((oc) => (oc.id === ocModificada.id ? ocModificada : oc)));
   };
 
-  // 👇 NUEVO: Funciones de Control para Incidencias 👇
   const agregarIncidencia = (nueva: Incidencia) => {
     setIncidencias((prev) => [nueva, ...prev]);
   };
 
   const actualizarIncidencia = (incModificada: Incidencia) => {
-    setIncidencias((prev) => prev.map(inc => inc.id === incModificada.id ? incModificada : inc));
+    setIncidencias((prev) => prev.map((inc) => (inc.id === incModificada.id ? incModificada : inc)));
   };
-  // 👆 FIN NUEVO 👆
 
   return (
     <div
@@ -94,7 +105,7 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema }: AppLayoutProps) 
           onToggleTema={onToggleTema}
           usuarioActual={usuarioActual}
           onCambiarUsuario={setUsuarioActual}
-          incidencias={incidencias}  // <-- ESTA ES LA LÍNEA NUEVA
+          incidencias={incidencias}
         />
 
         <div style={{ width: '100%' }}>
@@ -110,7 +121,6 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema }: AppLayoutProps) 
               actualizarOrdenCompra,
               repuestos,
               actualizarRepuesto,
-              // 👇 REPARTIMOS LAS INCIDENCIAS AL RESTO DE LA APP 👇
               incidencias,
               agregarIncidencia,
               actualizarIncidencia
