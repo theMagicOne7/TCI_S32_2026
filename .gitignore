@@ -1,0 +1,24 @@
+# Node y Frontend
+node_modules/
+**/node_modules/
+.pnpm-store/
+dist/
+dist-ssr/
+*.local
+*.log
+
+# Python y Backend
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.sqlite3
+*.db
+
+# Editor y OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
