@@ -17,18 +17,12 @@ interface RouterConfigProps {
   tema: TemaPaleta;
   esModoOscuro: boolean;
   onToggleTema: () => void;
-  usuario: string | null;
-  rol: string | null;
-  onCerrarSesion: () => void;
 }
 
 export const createAppRouter = ({
   tema,
   esModoOscuro,
   onToggleTema,
-  usuario,
-  rol,
-  onCerrarSesion
 }: RouterConfigProps) =>
   createBrowserRouter([
     {
@@ -38,9 +32,6 @@ export const createAppRouter = ({
           tema={tema}
           esModoOscuro={esModoOscuro}
           onToggleTema={onToggleTema}
-          usuario={usuario}
-          rol={rol}
-          onCerrarSesion={onCerrarSesion}
         />
       ),
       children: [
@@ -54,7 +45,7 @@ export const createAppRouter = ({
         },
         {
           path: 'recepcion',
-          element: <RecepcionPage/>
+          element: <RecepcionPage />
         },
         // 👇 RUTA DE GESTIÓN DE PERSONAL / USUARIOS 👇
         {
@@ -79,17 +70,16 @@ export const createAppRouter = ({
         // 👆 FIN NUEVAS RUTAS 👆
         {
           path: 'simulador',
-          element: <SimuladorPage/>
+          element: <SimuladorPage />
         },
         {
           path: 'nueva-incidencia',
-          element: <NuevaIncidenciaPage/>
+          element: <NuevaIncidenciaPage />
         },
         {
           path: 'auditoria-incidencias',
-          element: <AuditoriaIncidenciasPage/>
+          element: <AuditoriaIncidenciasPage />
         }
-
       ]
     }
   ]);

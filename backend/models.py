@@ -21,10 +21,10 @@ class Usuario(SQLModel, table=True):
 
     # OWASP: Jamás texto plano, solo el hash de bcrypt
     hashed_password: str
+    hashed_pin: Optional[str] = Field(default=None)
     rol: RolUsuario
     intentos_fallidos: int = Field(default=0)
     bloqueado: bool = Field(default=False)
-    secreto_2fa: Optional[str] = Field(default=None)
 
 class UsuarioCreate(SQLModel):
     username: str
@@ -32,6 +32,7 @@ class UsuarioCreate(SQLModel):
     apellido: Optional[str] = None
     nombre: Optional[str] = None
     rol: RolUsuario
+    pin: Optional[str] = None
 
 class UsuarioUpdate(SQLModel):
     apellido: Optional[str] = None
@@ -98,6 +99,7 @@ class EstadoIncidencia(str, Enum):
     PENDIENTE = "pendiente"
     EN_PROGRESO = "en_progreso"
     RESUELTA = "resuelta"
+    SIN_SOLUCION = "sin_solucion"
 
 
 class Incidencia(SQLModel, table=True):
@@ -135,17 +137,23 @@ class IncidenciaUpdate(SQLModel):
 # MODELOS Y ESQUEMAS DE MÁQUINAS Y ALTA DE REPUESTOS
 # ==========================================
 
+class EstadoMaquina(str, Enum):
+    ACTIVA = "activa"
+    EN_REPARACION = "en_reparacion"
+    FUERA_DE_SERVICIO = "fuera_de_servicio"
+    
 class Maquina(SQLModel, table=True):
     codigo: str = Field(primary_key=True, index=True)  # Ej: "CAL-01", "ENV-02"
     nombre: str                                        # Ej: "Caldera Principal"
     sector: str                                        # Ej: "Producción"
-    activa: bool = Field(default=True)
+    estado: EstadoMaquina = Field(default=EstadoMaquina.ACTIVA)
 
 
 class MaquinaCreate(SQLModel):
     codigo: str
     nombre: str
     sector: str
+    
 
 class MaquinaUpdate(SQLModel):
     nombre: Optional[str] = None
