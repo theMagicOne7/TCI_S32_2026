@@ -18,6 +18,7 @@ class Usuario(SQLModel, table=True):
     username: str = Field(unique=True, index=True)
     apellido: Optional[str] = Field(default=None)
     nombre: Optional[str] = Field(default=None)
+    email: Optional[str] = Field(default=None, index=True)
 
     # OWASP: Jamás texto plano, solo el hash de bcrypt
     hashed_password: str
@@ -25,6 +26,14 @@ class Usuario(SQLModel, table=True):
     rol: RolUsuario
     intentos_fallidos: int = Field(default=0)
     bloqueado: bool = Field(default=False)
+
+
+class CodigoRecuperacion(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(index=True)
+    codigo_hash: str
+    vence_en: datetime
+    usado: bool = Field(default=False)
 
 class UsuarioCreate(SQLModel):
     username: str

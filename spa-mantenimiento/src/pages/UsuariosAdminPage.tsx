@@ -5,6 +5,7 @@ interface UsuarioItem {
   username: string;
   apellido?: string;
   nombre?: string;
+  email?: string;
   rol: string;
   bloqueado: boolean;
   intentos_fallidos: number;
@@ -19,6 +20,7 @@ export const UsuariosAdminPage: React.FC = () => {
   const [nuevoUsername, setNuevoUsername] = useState('');
   const [apellidoInput, setApellidoInput] = useState('');
   const [nombreInput, setNombreInput] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [nuevaPassword, setNuevaPassword] = useState('');
   const [nuevoRol, setNuevoRol] = useState('Operario');
   const [busqueda, setBusqueda] = useState('');
@@ -54,6 +56,7 @@ export const UsuariosAdminPage: React.FC = () => {
         username: nuevoUsername,
         apellido: apellidoInput,
         nombre: nombreInput,
+        email: emailInput,
         rol: nuevoRol
       };
 
@@ -85,6 +88,7 @@ export const UsuariosAdminPage: React.FC = () => {
     setNuevoUsername(user.username);
     setApellidoInput(user.apellido || '');
     setNombreInput(user.nombre || '');
+    setEmailInput(user.email || '');
     setNuevaPassword('');
     setNuevoRol(user.rol);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -95,6 +99,7 @@ export const UsuariosAdminPage: React.FC = () => {
     setNuevoUsername('');
     setApellidoInput('');
     setNombreInput('');
+    setEmailInput('');
     setNuevaPassword('');
     setNuevoRol('Operario');
   };
@@ -184,6 +189,10 @@ export const UsuariosAdminPage: React.FC = () => {
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '800', color: '#111827', marginBottom: '8px' }}>Nombre</label>
             <input type="text" value={nombreInput} onChange={(e) => setNombreInput(e.target.value)} placeholder="Ej: Cecilia" style={{ width: '100%', border: '2px solid #d1d5db', borderRadius: '8px', padding: '10px', fontSize: '0.9rem', color: '#111827', background: '#ffffff', outline: 'none', boxSizing: 'border-box' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '800', color: '#111827', marginBottom: '8px' }}>Correo de recuperación</label>
+            <input type="email" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="empleado@gmail.com" style={{ width: '100%', border: '2px solid #d1d5db', borderRadius: '8px', padding: '10px', fontSize: '0.9rem', color: '#111827', background: '#ffffff', outline: 'none', boxSizing: 'border-box' }} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '800', color: '#111827', marginBottom: '8px' }}>{usernameOriginal ? 'Nueva Contraseña' : 'Contraseña'}</label>

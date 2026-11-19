@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer
-from sqlmodel import SQLModel, Session, create_engine, select, delete, or_
+from sqlmodel import SQLModel, Session, create_engine, select, delete, or_, text
 from passlib.context import CryptContext
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -11,6 +11,10 @@ from slowapi.errors import RateLimitExceeded
 from typing import List
 import jwt
 import os
+import hashlib
+import secrets
+import smtplib
+from email.message import EmailMessage
 from datetime import datetime, timedelta, timezone
 
 from models import (
@@ -32,6 +36,7 @@ from models import (
     Maquina,
     MaquinaCreate,
     MaquinaUpdate,
+    CodigoRecuperacion,
 )
 
 # ==========================================
@@ -80,9 +85,16 @@ def seed_initial_data() -> None:
         session.commit()
 
 
+def preparar_columnas_existentes() -> None:
+    """Actualiza instalaciones ya creadas sin perder los usuarios existentes."""
+    with engine.begin() as conexion:
+        conexion.execute(text("ALTER TABLE usuario ADD COLUMN IF NOT EXISTS email VARCHAR"))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     SQLModel.metadata.create_all(engine)
+    preparar_columnas_existentes()
     seed_initial_data()
     yield
 
@@ -110,6 +122,32 @@ app.add_middleware(
 def get_session():
     with Session(engine) as session:
         yield session
+
+
+def enviar_codigo_recuperacion(destinatario: str, codigo: str) -> None:
+    usuario_smtp = os.getenv("SMTP_USER")
+    clave_smtp = os.getenv("SMTP_PASSWORD")
+    if not usuario_smtp or not clave_smtp:
+        raise HTTPException(status_code=503, detail="El correo de recuperación todavía no está configurado.")
+
+    mensaje = EmailMessage()
+    mensaje["Subject"] = "CLG Planta - código de recuperación"
+    mensaje["From"] = usuario_smtp
+    mensaje["To"] = destinatario
+    mensaje.set_content(
+        "Solicitaste recuperar o desbloquear tu acceso a CLG Planta.\n\n"
+        f"Tu código es: {codigo}\n\n"
+        "Vence en 15 minutos. Si no solicitaste este código, ignorá este correo."
+    )
+
+    host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    puerto = int(os.getenv("SMTP_PORT", "465"))
+    try:
+        with smtplib.SMTP_SSL(host, puerto, timeout=10) as smtp:
+            smtp.login(usuario_smtp, clave_smtp)
+            smtp.send_message(mensaje)
+    except OSError as error:
+        raise HTTPException(status_code=502, detail="No se pudo enviar el correo de recuperación.") from error
 
 # ==========================================
 # 4. DEPENDENCIA DE VALIDACIÓN DE SESIÓN (JWT)
@@ -215,6 +253,62 @@ def login(request: Request, datos: dict, session: Session = Depends(get_session)
         "rol": user.rol.value
     }
 
+
+@app.post("/auth/recuperacion/solicitar")
+@limiter.limit("3/minute")
+def solicitar_recuperacion(request: Request, datos: dict, session: Session = Depends(get_session)):
+    username = (datos.get("username") or "").strip()
+    user = session.exec(select(Usuario).where(Usuario.username == username)).first()
+
+    # La misma respuesta evita revelar qué nombres de usuario existen.
+    respuesta = {"mensaje": "Si el usuario tiene un correo registrado, enviamos un código de recuperación."}
+    if not user or not user.email:
+        return respuesta
+
+    codigo = f"{secrets.randbelow(1_000_000):06d}"
+    registro = CodigoRecuperacion(
+        username=user.username,
+        codigo_hash=hashlib.sha256(codigo.encode()).hexdigest(),
+        vence_en=datetime.now(timezone.utc) + timedelta(minutes=15),
+    )
+    session.add(registro)
+    session.commit()
+    enviar_codigo_recuperacion(user.email, codigo)
+    return respuesta
+
+
+@app.post("/auth/recuperacion/verificar")
+@limiter.limit("5/minute")
+def confirmar_recuperacion(request: Request, datos: dict, session: Session = Depends(get_session)):
+    username = (datos.get("username") or "").strip()
+    codigo = (datos.get("codigo") or "").strip()
+    nueva_password = datos.get("nueva_password") or ""
+    if len(nueva_password) < 6:
+        raise HTTPException(status_code=400, detail="La nueva contraseña debe tener al menos 6 caracteres.")
+
+    registro = session.exec(
+        select(CodigoRecuperacion)
+        .where(CodigoRecuperacion.username == username)
+        .where(CodigoRecuperacion.usado == False)
+        .order_by(CodigoRecuperacion.id.desc())
+    ).first()
+    if not registro or registro.vence_en < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="El código no es válido o venció.")
+    if not secrets.compare_digest(registro.codigo_hash, hashlib.sha256(codigo.encode()).hexdigest()):
+        raise HTTPException(status_code=400, detail="El código no es válido o venció.")
+
+    user = session.exec(select(Usuario).where(Usuario.username == username)).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="El código no es válido o venció.")
+    user.hashed_password = pwd_context.hash(nueva_password)
+    user.bloqueado = False
+    user.intentos_fallidos = 0
+    registro.usado = True
+    session.add(user)
+    session.add(registro)
+    session.commit()
+    return {"mensaje": "Contraseña actualizada y usuario desbloqueado. Ya podés iniciar sesión."}
+
 @app.post("/usuarios", status_code=201)
 def crear_nuevo_usuario(
     datos: dict,
@@ -229,6 +323,7 @@ def crear_nuevo_usuario(
     nuevo_rol = datos.get("rol")
     nombre = (datos.get("nombre") or datos.get("nombre_completo") or nuevo_username).strip()
     apellido = (datos.get("apellido") or "").strip()
+    email = (datos.get("email") or "").strip().lower() or None
 
     if not nuevo_username or not nueva_password or not nuevo_rol:
         raise HTTPException(status_code=400, detail="Faltan datos obligatorios (username, password, rol)")
@@ -250,6 +345,7 @@ def crear_nuevo_usuario(
         username=nuevo_username,
         apellido=apellido,
         nombre=nombre,
+        email=email,
         hashed_password=pwd_context.hash(nueva_password),
         rol=rol_enum
     )
@@ -264,6 +360,7 @@ def crear_nuevo_usuario(
             "username": nuevo_usuario.username,
             "apellido": nuevo_usuario.apellido,
             "nombre": nuevo_usuario.nombre,
+            "email": nuevo_usuario.email,
             "rol": nuevo_usuario.rol.value,
             "bloqueado": nuevo_usuario.bloqueado,
             "intentos_fallidos": nuevo_usuario.intentos_fallidos,
@@ -312,6 +409,7 @@ def listar_usuarios(
             "username": u.username,
             "apellido": u.apellido,
             "nombre": u.nombre,
+            "email": u.email,
             "rol": u.rol.value if hasattr(u.rol, "value") else u.rol,
             "bloqueado": u.bloqueado,
             "intentos_fallidos": u.intentos_fallidos
@@ -334,6 +432,7 @@ def editar_usuario(
     nuevo_rol = datos.get("rol")
     nuevo_apellido = datos.get("apellido")
     nuevo_nombre = datos.get("nombre")
+    nuevo_email = datos.get("email")
     nuevo_bloqueado = datos.get("bloqueado")
 
     if nuevo_username and nuevo_username.lower() != username_a_editar.lower():
@@ -364,6 +463,9 @@ def editar_usuario(
     if nuevo_nombre is not None:
         user_db.nombre = nuevo_nombre
 
+    if nuevo_email is not None:
+        user_db.email = nuevo_email.strip().lower() or None
+
     if nuevo_bloqueado is not None:
         user_db.bloqueado = bool(nuevo_bloqueado)
         if not user_db.bloqueado:
@@ -388,6 +490,7 @@ def editar_usuario(
         "rol": user_db.rol.value,
         "apellido": user_db.apellido,
         "nombre": user_db.nombre,
+        "email": user_db.email,
         "bloqueado": user_db.bloqueado,
     }
 
