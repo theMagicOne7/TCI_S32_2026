@@ -11,7 +11,6 @@ import {
   type Repuesto,
   type Incidencia 
 } from '../types/index';
-import { PERSONAL_PLANTA } from '../constants/mock';
 import { fetchRepuestos } from '../data';
 import { NavBar } from '../components/NavBar';
 
@@ -19,11 +18,12 @@ interface AppLayoutProps {
   tema: TemaPaleta;
   esModoOscuro: boolean;
   onToggleTema: () => void;
+  usuarioActual: UsuarioPlanta;
+  onCerrarSesion: () => void;
 }
 
-export function AppLayout({ tema, esModoOscuro, onToggleTema }: AppLayoutProps) {
+export function AppLayout({ tema, esModoOscuro, onToggleTema, usuarioActual, onCerrarSesion }: AppLayoutProps) {
   const [movimientos, setMovimientos] = useState<MovimientoStock[]>([]);
-  const [usuarioActual, setUsuarioActual] = useState<UsuarioPlanta>(PERSONAL_PLANTA[0]);
   const [ordenesCompra, setOrdenesCompra] = useState<OrdenCompra[]>([]);
   const [repuestos, setRepuestos] = useState<Repuesto[]>([]);
   const [incidencias, setIncidencias] = useState<Incidencia[]>([]);
@@ -104,7 +104,7 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema }: AppLayoutProps) 
           esModoOscuro={esModoOscuro}
           onToggleTema={onToggleTema}
           usuarioActual={usuarioActual}
-          onCambiarUsuario={setUsuarioActual}
+          onCerrarSesion={onCerrarSesion}
           incidencias={incidencias}
         />
 

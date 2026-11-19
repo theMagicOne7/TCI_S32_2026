@@ -1,18 +1,62 @@
 // CAPA DE ABSTRACCIÓN DE RED PARA LAS PETICIONES HTTP
 
-import { type Repuesto } from './types/index';
+import { type AreaPlanta, type Repuesto, type RolPlanta, type UsuarioPlanta } from './types/index';
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+export const TOKEN_STORAGE_KEY = 'token_acceso';
+export const USER_STORAGE_KEY = 'usuario_sesion_planta';
 
-function getAuthHeaders(extraHeaders: Record<string, string> = {}): HeadersInit {
+export interface LoginRespuesta {
+  access_token: string;
+  token_type: string;
+  usuario: string;
+  nombre: string;
+  apellido: string;
+  rol: string;
+}
+
+export function mapearRespuestaAUsuarioPlanta(respuesta: LoginRespuesta): UsuarioPlanta {
+  const rolBackend = respuesta.rol.toLowerCase();
+  let rol: RolPlanta = 'operario';
+  let area: AreaPlanta = 'produccion';
+
+  if (rolBackend === 'supervisor') {
+    rol = 'supervisor';
+    area = 'direccion';
+  } else if (rolBackend === 'mantenimiento') {
+    rol = 'tecnico';
+    area = 'mantenimiento';
+  } else if (rolBackend === 'encargado') {
+    rol = 'encargado';
+    area = 'deposito';
+  }
+
+  const nombre = `${respuesta.nombre || ''} ${respuesta.apellido || ''}`.trim() || respuesta.usuario;
+  return { id: respuesta.usuario, nombre, legajo: respuesta.usuario.toUpperCase(), rol, area };
+}
+
+export function getAuthHeaders(extraHeaders: Record<string, string> = {}): HeadersInit {
   const token =
     typeof window !== 'undefined'
-      ? localStorage.getItem('token') || localStorage.getItem('access_token')
+      ? localStorage.getItem(TOKEN_STORAGE_KEY)
       : null;
 
   return {
     ...extraHeaders,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
+}
+
+export async function loginAPI(username: string, password: string): Promise<LoginRespuesta> {
+  const res = await fetch(`${API_BASE_URL}/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: username.trim(), password, token_captcha: 'humano-verificado' }),
+    signal: AbortSignal.timeout(6000),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.detail || 'Credenciales inválidas o error al iniciar sesión.');
+  return data as LoginRespuesta;
 }
 
 export async function fetchRepuestos(): Promise<Repuesto[]> {
