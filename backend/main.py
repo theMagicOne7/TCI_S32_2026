@@ -87,6 +87,8 @@ def seed_initial_data() -> None:
 
 def preparar_columnas_existentes() -> None:
     """Actualiza instalaciones ya creadas sin perder los usuarios existentes."""
+    if engine.dialect.name != "postgresql":
+        return
     with engine.begin() as conexion:
         conexion.execute(text("ALTER TABLE usuario ADD COLUMN IF NOT EXISTS email VARCHAR"))
 
