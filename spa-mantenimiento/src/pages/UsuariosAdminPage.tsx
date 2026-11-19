@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { API_BASE_URL, getAuthHeaders } from '../data';
 
 interface UsuarioItem {
   username: string;
@@ -24,13 +25,7 @@ export const UsuariosAdminPage: React.FC = () => {
 
   const obtenerUsuarios = async () => {
     try {
-      const token = localStorage.getItem("token_acceso");
-      const response = await fetch('/usuarios', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await fetch(`${API_BASE_URL}/usuarios`, { headers: getAuthHeaders({ 'Content-Type': 'application/json' }) });
 
       if (!response.ok) {
         throw new Error("No tienes permisos o falló la carga de usuarios.");
@@ -52,8 +47,7 @@ export const UsuariosAdminPage: React.FC = () => {
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem("token_acceso");
-      const endpoint = usernameOriginal ? `/usuarios/${usernameOriginal}` : '/usuarios';
+      const endpoint = usernameOriginal ? `${API_BASE_URL}/usuarios/${usernameOriginal}` : `${API_BASE_URL}/usuarios`;
       const method = usernameOriginal ? 'PUT' : 'POST';
 
       const bodyData: any = {
@@ -69,10 +63,7 @@ export const UsuariosAdminPage: React.FC = () => {
 
       const response = await fetch(endpoint, {
         method: method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(bodyData)
       });
 
@@ -114,13 +105,9 @@ export const UsuariosAdminPage: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem("token_acceso");
-      const response = await fetch(`/usuarios/${username}`, {
+      const response = await fetch(`${API_BASE_URL}/usuarios/${username}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' })
       });
 
       if (!response.ok) {

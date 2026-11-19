@@ -76,7 +76,7 @@ export function HomePage() {
         
         {/* OP1: Si es OPERARIO -> Botón rápido para Reportar Falla */}
         {(rolUsuario.includes('operario') || !rolUsuario) && (
-          <div onClick={() => navigate('/reportar-falla')} style={cardStyle}>
+          <div onClick={() => navigate('/nueva-incidencia')} style={cardStyle}>
             <div style={{ fontSize: '1.8rem' }}>🚨</div>
             <div>
               <h3 style={{ margin: '0 0 4px 0', fontSize: '1.05rem', color: tema.textoPrincipal }}>
