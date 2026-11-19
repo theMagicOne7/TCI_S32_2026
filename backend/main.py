@@ -56,8 +56,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 def seed_initial_data() -> None:
     with Session(engine) as session:
-        # Único usuario administrador inicial (Supervisor) si la base está vacía.
-        # Máquinas, repuestos, incidencias y reparaciones arrancan vacíos.
+        # Usuario administrador inicial si la base está vacía.
         if not session.exec(select(Usuario.id)).first():
             usuario_principal = Usuario(
                 username="ceci",
@@ -67,7 +66,18 @@ def seed_initial_data() -> None:
                 rol=RolUsuario.SUPERVISOR,
             )
             session.add(usuario_principal)
-            session.commit()
+
+        # Catálogo mínimo para que el circuito de consulta y consumo pueda
+        # demostrarse desde el primer arranque sin cargar datos manualmente.
+        if not session.exec(select(Repuesto.codigo)).first():
+            for repuesto in (
+                Repuesto(codigo="FIL-001", nombre="Filtro de aire industrial", stock_disponible=12, ubicacion="Estante A-4"),
+                Repuesto(codigo="MOT-005", nombre="Motor trifásico de cinta transportadora", stock_disponible=3, ubicacion="Depósito B-12"),
+                Repuesto(codigo="PLA-104", nombre="Placa de control PLC principal", stock_disponible=8, ubicacion="Armario eléctrico 1"),
+            ):
+                session.add(repuesto)
+
+        session.commit()
 
 
 @asynccontextmanager
