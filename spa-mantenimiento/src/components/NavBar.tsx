@@ -3,14 +3,13 @@
 import { NavLink } from 'react-router-dom';
 // 👇 1. Asegurarse de importar Incidencia
 import { type TemaPaleta, type UsuarioPlanta, type Incidencia } from '../types/index';
-import { PERSONAL_PLANTA } from '../constants/mock';
 
 interface NavBarProps {
   tema: TemaPaleta;
   esModoOscuro: boolean;
   onToggleTema: () => void;
   usuarioActual: UsuarioPlanta;
-  onCambiarUsuario: (usuario: UsuarioPlanta) => void;
+  onCerrarSesion: () => void;
     // 👇 2. Agregamos la propiedad incidencias
   incidencias: Incidencia[]; 
 }
@@ -20,7 +19,7 @@ export function NavBar({
   esModoOscuro,
   onToggleTema,
   usuarioActual,
-  onCambiarUsuario,
+  onCerrarSesion,
   // 👇 3. Recibimos incidencias
   incidencias 
 }: NavBarProps) {
@@ -39,6 +38,7 @@ export function NavBar({
 
     // LÓGICA DE PERMISOS PARA LA BARRA DE NAVEGACIÓN
   const esDireccion = usuarioActual.area === 'direccion';
+  const esSupervisor = usuarioActual.rol === 'supervisor';
   const esAuditorMantenimiento = usuarioActual.area === 'mantenimiento' || esDireccion;
 
   // 👇 4. LÓGICA DEL GLOBITO: Contamos solo las "pendientes" según el rol
@@ -99,7 +99,7 @@ export function NavBar({
           </div>
         </div>
 
-        {/* Controles de Sesión / Turno y Tema */}
+        {/* Controles de sesión real y tema */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div
             style={{
@@ -113,46 +113,18 @@ export function NavBar({
             }}
           >
             <span style={{ fontSize: '0.75rem', color: tema.textoSecundario }}>👤</span>
-            <select
-              value={usuarioActual.id}
-              onChange={(e) => {
-                const seleccionado = PERSONAL_PLANTA.find((u) => u.id === e.target.value);
-                if (seleccionado) onCambiarUsuario(seleccionado);
-              }}
-              style={{
-                background: tema.fondoTarjeta,
-                color: tema.textoPrincipal,
-                border: `1px solid ${tema.borde}`,
-                borderRadius: '6px',
-                padding: '4px 6px',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                outline: 'none'
-              }}
-            >
-                            {['produccion', 'mantenimiento', 'deposito', 'direccion'].map((areaStr) => {
-                const empleadosArea = PERSONAL_PLANTA.filter((u) => u.area === areaStr);
-                if (empleadosArea.length === 0) return null;
-
-                return (
-                  <optgroup key={areaStr} label={`📍 ÁREA: ${areaStr.toUpperCase()}`}>
-                    {empleadosArea.map((u) => {
-                      const textoRol = u.rol === 'encargado' 
-                        ? `encargado de ${areaStr}` 
-                        : u.rol;
-                      
-                      return (
-                        <option key={u.id} value={u.id}>
-                          {u.nombre} ({textoRol})
-                        </option>
-                      );
-                    })}
-                  </optgroup>
-                );
-              })}
-            </select>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: tema.textoPrincipal }}>
+              {usuarioActual.nombre} ({usuarioActual.rol})
+            </span>
           </div>
+
+          <button
+            type="button"
+            onClick={onCerrarSesion}
+            style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', padding: '6px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700 }}
+          >
+            Salir
+          </button>
 
           <button
             onClick={onToggleTema}
@@ -183,6 +155,12 @@ export function NavBar({
         <NavLink to="/recepcion" style={getLinkStyle}>
            🚚 Recepción 
         </NavLink>
+
+        {esSupervisor && (
+          <NavLink to="/usuarios" style={getLinkStyle}>
+            👥 Personal
+          </NavLink>
+        )}
 
         {/* BOTONES DE AUDITORÍA DINÁMICOS POR ÁREA */}
         {(esDireccion || usuarioActual.area === 'deposito') && (

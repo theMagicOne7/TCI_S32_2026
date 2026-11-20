@@ -24,6 +24,10 @@ services:
     container_name: tci-backend
     environment:
       DATABASE_URL: postgresql+pg8000://postgres:postgres@db-mantenimiento:5432/mantenimiento_db
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 465
     ports:
       - "8001:8000"
     depends_on:

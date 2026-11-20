@@ -18,6 +18,7 @@ class Usuario(SQLModel, table=True):
     username: str = Field(unique=True, index=True)
     apellido: Optional[str] = Field(default=None)
     nombre: Optional[str] = Field(default=None)
+    email: Optional[str] = Field(default=None, index=True)
 
     # OWASP: Jamás texto plano, solo el hash de bcrypt
     hashed_password: str
@@ -25,6 +26,14 @@ class Usuario(SQLModel, table=True):
     rol: RolUsuario
     intentos_fallidos: int = Field(default=0)
     bloqueado: bool = Field(default=False)
+
+
+class CodigoRecuperacion(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(index=True)
+    codigo_hash: str
+    vence_en: datetime
+    usado: bool = Field(default=False)
 
 class UsuarioCreate(SQLModel):
     username: str
@@ -160,3 +169,28 @@ class MaquinaUpdate(SQLModel):
     sector: Optional[str] = None
     activa: Optional[bool] = None
 
+
+
+class MovimientoStock(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    fecha: str
+    hora: str
+    codigo: str = Field(index=True)
+    cantidad: int
+    operario: str
+    turno: str
+    motivoUso: str
+    maquinaVinculada: str = Field(default="N/A")
+    area: Optional[str] = Field(default=None, index=True)  # 'deposito' | 'mantenimiento' | 'produccion'
+
+
+class MovimientoStockCreate(SQLModel):
+    fecha: str
+    hora: str
+    codigo: str
+    cantidad: int
+    operario: str
+    turno: str
+    motivoUso: str
+    maquinaVinculada: str = "N/A"
+    area: Optional[str] = None

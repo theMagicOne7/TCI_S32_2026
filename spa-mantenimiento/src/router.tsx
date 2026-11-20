@@ -6,7 +6,7 @@ import { HomePage } from './pages/HomePage';
 import { RepuestosPage } from './pages/RepuestoPage';
 // 👇 1. Importamos el nuevo componente inteligente (y borramos HistorialPage)
 import { AuditoriaAreaPage } from './pages/AuditoriaAREAPage';
-import { type TemaPaleta } from './types/index';
+import { type TemaPaleta, type UsuarioPlanta } from './types/index';
 import { RecepcionPage } from './pages/RecepcionPage';
 import { SimuladorPage } from './pages/SimuladorPage';
 import { NuevaIncidenciaPage } from './pages/NuevaIncidenciaPage';
@@ -17,12 +17,16 @@ interface RouterConfigProps {
   tema: TemaPaleta;
   esModoOscuro: boolean;
   onToggleTema: () => void;
+  usuarioActual: UsuarioPlanta;
+  onCerrarSesion: () => void;
 }
 
 export const createAppRouter = ({
   tema,
   esModoOscuro,
   onToggleTema,
+  usuarioActual,
+  onCerrarSesion,
 }: RouterConfigProps) =>
   createBrowserRouter([
     {
@@ -32,6 +36,8 @@ export const createAppRouter = ({
           tema={tema}
           esModoOscuro={esModoOscuro}
           onToggleTema={onToggleTema}
+          usuarioActual={usuarioActual}
+          onCerrarSesion={onCerrarSesion}
         />
       ),
       children: [

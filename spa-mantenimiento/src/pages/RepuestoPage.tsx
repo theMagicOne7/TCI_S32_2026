@@ -6,10 +6,11 @@ import { type Repuesto, type MovimientoStock } from '../types/index';
 import { RepuestoCard } from '../components/RepuestoCard';
 import type { LayoutContextType } from '../types/index';
 import { CODIGOS_CONOCIDOS } from '../constants/mock';
+import { fetchRepuestoPorCodigo } from '../data';
 
 export function RepuestosPage() {
   // 👇 1. Ahora traemos 'repuestos' y 'actualizarRepuesto' del estado global 👇
-  const { tema, esModoOscuro, agregarMovimiento, usuarioActual, repuestos, actualizarRepuesto } = useOutletContext<LayoutContextType>();
+  const { tema, esModoOscuro, agregarMovimiento, usuarioActual, actualizarRepuesto } = useOutletContext<LayoutContextType>();
 
   const [codigoBuscado, setCodigoBuscado] = useState('FIL-001');
   const [repuesto, setRepuesto] = useState<Repuesto | null>(null);
@@ -20,22 +21,18 @@ export function RepuestosPage() {
   const [maquinaVinculada, setMaquinaVinculada] = useState<string>('');
   const [motivoUso, setMotivoUso] = useState<string>('');
 
-  // 👇 2. La consulta ahora busca en memoria, no en internet 👇
-  const consultarRepuesto = (codigo: string) => {
+  // Consulta siempre a la API para reflejar el stock persistido en PostgreSQL.
+  const consultarRepuesto = async (codigo: string) => {
     const codLimpio = codigo.trim().toUpperCase();
     if (!codLimpio) return;
 
     setError(null);
     setMensajeConsumo(null);
-    
-    // Buscamos en el array global que provee AppLayout
-    const encontrado = repuestos.find(r => r.codigo === codLimpio);
-
-    if (encontrado) {
-      setRepuesto(encontrado);
-    } else {
+    try {
+      setRepuesto(await fetchRepuestoPorCodigo(codLimpio));
+    } catch (err) {
       setRepuesto(null);
-      setError(`El código ${codLimpio} no existe en el sistema.`);
+      setError(err instanceof Error ? err.message : `El código ${codLimpio} no existe en el sistema.`);
     }
   };
 
