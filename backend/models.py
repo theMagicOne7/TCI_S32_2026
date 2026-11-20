@@ -169,3 +169,28 @@ class MaquinaUpdate(SQLModel):
     sector: Optional[str] = None
     activa: Optional[bool] = None
 
+
+
+class MovimientoStock(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    fecha: str
+    hora: str
+    codigo: str = Field(index=True)
+    cantidad: int
+    operario: str
+    turno: str
+    motivoUso: str
+    maquinaVinculada: str = Field(default="N/A")
+    area: Optional[str] = Field(default=None, index=True)  # 'deposito' | 'mantenimiento' | 'produccion'
+
+
+class MovimientoStockCreate(SQLModel):
+    fecha: str
+    hora: str
+    codigo: str
+    cantidad: int
+    operario: str
+    turno: str
+    motivoUso: str
+    maquinaVinculada: str = "N/A"
+    area: Optional[str] = None
