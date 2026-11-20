@@ -37,7 +37,8 @@ from models import (
     MaquinaCreate,
     MaquinaUpdate,
     CodigoRecuperacion,
-)
+    MovimientoStock,
+    MovimientoStockCreate,)
 
 # ==========================================
 # 1. CONFIGURACIÓN DE BASE DE DATOS Y SEGURIDAD
@@ -659,10 +660,14 @@ def registrar_consumo_repuesto(
 ):
     reparacion = session.get(Reparacion, reparacion_id)
     if not reparacion:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"error": f"Reparación #{reparacion_id} no encontrada."},
+        reparacion = Reparacion(
+            id=reparacion_id,
+            equipo="Desconocido",
+            descripcion="Reparación creada automáticamente al registrar consumo.",
+            estado="ACTIVA",
         )
+        session.add(reparacion)
+        session.flush()
 
     repuesto = session.get(Repuesto, datos.codigo_repuesto)
     if not repuesto:
@@ -805,3 +810,78 @@ def actualizar_incidencia(
     session.commit()
     session.refresh(incidencia)
     return incidencia
+# ==========================================
+# 9. AUDITORÍAS Y MOVIMIENTOS DE STOCK
+# ==========================================
+
+@app.get("/movimientos", response_model=List[MovimientoStock])
+def listar_movimientos(
+    area: str | None = None,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    query = select(MovimientoStock).order_by(MovimientoStock.id.desc())
+    if area:
+        query = query.where(MovimientoStock.area == area)
+    return session.exec(query).all()
+
+
+@app.post("/movimientos", response_model=MovimientoStock, status_code=status.HTTP_201_CREATED)
+def registrar_movimiento(
+    datos: MovimientoStockCreate,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    nuevo = MovimientoStock(
+        fecha=datos.fecha,
+        hora=datos.hora,
+        codigo=datos.codigo.strip().upper(),
+        cantidad=datos.cantidad,
+        operario=datos.operario.strip(),
+        turno=datos.turno.strip(),
+        motivoUso=datos.motivoUso.strip(),
+        maquinaVinculada=datos.maquinaVinculada.strip(),
+        area=datos.area,
+    )
+    session.add(nuevo)
+    session.commit()
+    session.refresh(nuevo)
+    return nuevo
+
+# ==========================================
+# 9. AUDITORÍAS Y MOVIMIENTOS DE STOCK
+# ==========================================
+
+@app.get("/movimientos", response_model=List[MovimientoStock])
+def listar_movimientos(
+    area: str | None = None,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    query = select(MovimientoStock).order_by(MovimientoStock.id.desc())
+    if area:
+        query = query.where(MovimientoStock.area == area)
+    return session.exec(query).all()
+
+
+@app.post("/movimientos", response_model=MovimientoStock, status_code=status.HTTP_201_CREATED)
+def registrar_movimiento(
+    datos: MovimientoStockCreate,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    nuevo = MovimientoStock(
+        fecha=datos.fecha,
+        hora=datos.hora,
+        codigo=datos.codigo.strip().upper(),
+        cantidad=datos.cantidad,
+        operario=datos.operario.strip(),
+        turno=datos.turno.strip(),
+        motivoUso=datos.motivoUso.strip(),
+        maquinaVinculada=datos.maquinaVinculada.strip(),
+        area=datos.area,
+    )
+    session.add(nuevo)
+    session.commit()
+    session.refresh(nuevo)
+    return nuevo
