@@ -13,6 +13,7 @@ import {
   type LoginRespuesta,
 } from './data';
 
+
 export default function App() {
   const [esModoOscuro, setEsModoOscuro] = useState<boolean>(() => {
     return localStorage.getItem('tema_farmacia') === 'oscuro';

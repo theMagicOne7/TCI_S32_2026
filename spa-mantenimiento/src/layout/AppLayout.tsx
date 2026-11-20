@@ -11,7 +11,13 @@ import {
   type Repuesto,
   type Incidencia 
 } from '../types/index';
-import { fetchRepuestos } from '../data';
+import { 
+  fetchRepuestos,
+  actualizarRepuestoAPI, 
+  crearRepuestoAPI, 
+  fetchMovimientos, 
+  crearMovimientoAPI
+ } from '../data';
 import { NavBar } from '../components/NavBar';
 
 interface AppLayoutProps {
@@ -37,6 +43,13 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema, usuarioActual, onC
       .catch((err) => {
         console.warn('[AppLayout] No se pudo cargar el inventario desde la API:', err);
       });
+      fetchMovimientos()
+      .then((lista) => {
+        if (activo) setMovimientos(lista);
+      })
+      .catch((err) => {
+        console.warn('[AppLayout] No se pudo cargar el historial de auditorías:', err);
+      });
 
     return () => {
       activo = false;
@@ -44,13 +57,55 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema, usuarioActual, onC
   }, []);
 
   const actualizarRepuesto = (repuestoModificado: Repuesto) => {
-    setRepuestos((prev) => 
-      prev.map((r) => (r.codigo === repuestoModificado.codigo ? repuestoModificado : r))
+    const existe = repuestos.some(
+      (r) => r.codigo.trim().toUpperCase() === repuestoModificado.codigo.trim().toUpperCase()
     );
+    setRepuestos((prev) => 
+      existe
+        ? prev.map((r) =>
+            r.codigo.trim().toUpperCase() === repuestoModificado.codigo.trim().toUpperCase()
+              ? repuestoModificado
+              : r
+          )
+        : [...prev, repuestoModificado]
+    );
+
+    const operacion = existe
+      ? actualizarRepuestoAPI(repuestoModificado)
+      : crearRepuestoAPI(repuestoModificado);
+
+    operacion
+      .then((guardado) => {
+        setRepuestos((prev) =>
+          prev.map((r) =>
+            r.codigo.trim().toUpperCase() === guardado.codigo.trim().toUpperCase() ? guardado : r
+          )
+        );
+      })
+      .catch((err) => {
+        console.error('[AppLayout] Error al persistir repuesto en PostgreSQL:', err);
+      });
   };
 
   const agregarMovimiento = (nuevo: MovimientoStock) => {
     setMovimientos((prev) => [nuevo, ...prev]);
+    const { id: _idDescartable, ...payloadSinId } = nuevo;
+    const motivo = (nuevo.motivoUso || '').toLowerCase();
+    const areaDetectada =
+      (nuevo as MovimientoStock & { area?: string }).area ||
+      (motivo.includes('depósito') || motivo.includes('oc-')) 
+      ? 'deposito'
+        : usuarioActual.area;
+
+    crearMovimientoAPI({ ...payloadSinId, area: areaDetectada })
+      .then((guardado) => {
+        setMovimientos((prev) =>
+          prev.map((m) => (m.id === nuevo.id ? guardado : m))
+        );
+      })
+      .catch((err) => {
+        console.error('[AppLayout] Error al persistir auditoría en PostgreSQL:', err);
+      });
   };
 
   const agregarOrdenCompra = (nueva: OrdenCompra) => {
