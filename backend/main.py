@@ -92,6 +92,7 @@ def preparar_columnas_existentes() -> None:
         return
     with engine.begin() as conexion:
         conexion.execute(text("ALTER TABLE usuario ADD COLUMN IF NOT EXISTS email VARCHAR"))
+        conexion.execute(text("ALTER TABLE incidencia ALTER COLUMN timestamp_creacion TYPE BIGINT"))
 
 
 @asynccontextmanager
@@ -848,40 +849,3 @@ def registrar_movimiento(
     session.refresh(nuevo)
     return nuevo
 
-# ==========================================
-# 9. AUDITORÍAS Y MOVIMIENTOS DE STOCK
-# ==========================================
-
-@app.get("/movimientos", response_model=List[MovimientoStock])
-def listar_movimientos(
-    area: str | None = None,
-    usuario_actual: Usuario = Depends(obtener_usuario_actual),
-    session: Session = Depends(get_session),
-):
-    query = select(MovimientoStock).order_by(MovimientoStock.id.desc())
-    if area:
-        query = query.where(MovimientoStock.area == area)
-    return session.exec(query).all()
-
-
-@app.post("/movimientos", response_model=MovimientoStock, status_code=status.HTTP_201_CREATED)
-def registrar_movimiento(
-    datos: MovimientoStockCreate,
-    usuario_actual: Usuario = Depends(obtener_usuario_actual),
-    session: Session = Depends(get_session),
-):
-    nuevo = MovimientoStock(
-        fecha=datos.fecha,
-        hora=datos.hora,
-        codigo=datos.codigo.strip().upper(),
-        cantidad=datos.cantidad,
-        operario=datos.operario.strip(),
-        turno=datos.turno.strip(),
-        motivoUso=datos.motivoUso.strip(),
-        maquinaVinculada=datos.maquinaVinculada.strip(),
-        area=datos.area,
-    )
-    session.add(nuevo)
-    session.commit()
-    session.refresh(nuevo)
-    return nuevo

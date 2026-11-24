@@ -69,6 +69,12 @@ function IncidenciaCard({ inc, esAuditorMantenimiento, tema }: { inc: Incidencia
 
   // LOGICA 3: Cierre de ticket y cálculo de tiempos
   const resolverIncidencia = () => {
+
+    if (codigoRepuesto.trim() !== '') {
+      setErrorStock('Tenés un código de repuesto escrito sin agregar. Presioná "Añadir Pieza" o borrá el campo antes de cerrar el ticket.');
+      return;
+    }
+    
     const ahoraMs = Date.now();
     const difMs = ahoraMs - inc.timestampCreacion; // Diferencia en milisegundos
 

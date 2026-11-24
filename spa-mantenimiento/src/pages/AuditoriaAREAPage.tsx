@@ -27,6 +27,8 @@ export function AuditoriaAreaPage({ areaObjetivo, titulo }: Props) {
 
   // 2. FILTRO DE DOMINIO: Separamos los movimientos usando el Legajo (PROD-, MANT-, DEP-)
   let movimientosDelArea = movimientos.filter(m => {
+    const areaMov = (m as typeof m & { area?: string }).area;
+    if (areaMov) return areaMov === areaObjetivo;
     if (areaObjetivo === 'deposito') return m.maquinaVinculada === 'N/A' || m.operario.includes('DEP-');
     if (areaObjetivo === 'mantenimiento') return m.operario.includes('MANT-');
     if (areaObjetivo === 'produccion') return m.operario.includes('PROD-');

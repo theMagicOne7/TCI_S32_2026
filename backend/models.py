@@ -2,6 +2,7 @@ from sqlmodel import SQLModel, Field
 from typing import Optional
 from enum import Enum
 from datetime import datetime, timezone
+from sqlalchemy import BigInteger, Column
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -113,7 +114,7 @@ class EstadoIncidencia(str, Enum):
 
 class Incidencia(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    timestamp_creacion: int  # Epoch ms para cálculo de duración en frontend
+    timestamp_creacion: int = Field(sa_column=Column(BigInteger, nullable=False))
     fecha: str
     hora: str
     maquina: str
