@@ -187,6 +187,10 @@ export function RepuestosPage() {
           esModoOscuro={esModoOscuro}
           cantidadAConsumir={cantidadAConsumir}
           mensajeConsumo={mensajeConsumo}
+          maquinaVinculada={maquinaVinculada}
+          motivoUso={motivoUso}
+          onMaquinaChange={setMaquinaVinculada}
+          onMotivoChange={setMotivoUso}
           onIncrementar={() => setCantidadAConsumir((c) => Math.min(repuesto.stock_disponible, c + 1))}
           onDecrementar={() => setCantidadAConsumir((c) => Math.max(1, c - 1))}
           onCambioCantidad={setCantidadAConsumir}

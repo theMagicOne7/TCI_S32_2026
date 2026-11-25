@@ -1,5 +1,5 @@
 // CAPA DE ABSTRACCIÓN DE RED PARA LAS PETICIONES HTTP
-
+import { type Incidencia } from './types/index'; // (sumá Incidencia al import de arriba en data.ts)
 import { type AreaPlanta,type MovimientoStock, type Repuesto, type RolPlanta, type UsuarioPlanta } from './types/index';
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 export const TOKEN_STORAGE_KEY = 'token_acceso';
@@ -180,4 +180,89 @@ export async function crearMovimientoAPI(
   }
 
   return res.json();
+}
+
+interface IncidenciaBackend {
+  id: number;
+  timestamp_creacion: number;
+  fecha: string;
+  hora: string;
+  maquina: string;
+  descripcion: string;
+  operario: string;
+  estado: 'pendiente' | 'en_progreso' | 'resuelta' | 'sin_solucion';
+  repuestos_utilizados_json?: string;
+  fecha_resolucion?: string | null;
+  hora_resolucion?: string | null;
+  tiempo_total_str?: string | null;
+}
+
+function mapearIncidenciaDesdeAPI(item: IncidenciaBackend): Incidencia {
+  let repuestosUtilizados: { codigo: string; cantidad: number }[] = [];
+  if (item.repuestos_utilizados_json) {
+    try {
+      repuestosUtilizados = JSON.parse(item.repuestos_utilizados_json);
+    } catch {
+      repuestosUtilizados = [];
+    }
+  }
+  return {
+    id: item.id,
+    timestampCreacion: item.timestamp_creacion,
+    fecha: item.fecha,
+    hora: item.hora,
+    maquina: item.maquina,
+    descripcion: item.descripcion,
+    operario: item.operario,
+    estado: item.estado === 'sin_solucion' ? 'resuelta' : item.estado,
+    repuestosUtilizados,
+    fechaResolucion: item.fecha_resolucion ?? undefined,
+    horaResolucion: item.hora_resolucion ?? undefined,
+    tiempoTotalStr: item.tiempo_total_str ?? undefined,
+  };
+}
+
+export async function fetchIncidencias(): Promise<Incidencia[]> {
+  const res = await fetch(`${API_BASE_URL}/incidencias`, {
+    headers: getAuthHeaders(),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) throw new Error('Error al obtener las incidencias desde PostgreSQL');
+  const lista: IncidenciaBackend[] = await res.json();
+  return lista.map(mapearIncidenciaDesdeAPI);
+}
+
+export async function crearIncidenciaAPI(nueva: Incidencia): Promise<Incidencia> {
+  const res = await fetch(`${API_BASE_URL}/incidencias`, {
+    method: 'POST',
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({
+      timestamp_creacion: nueva.timestampCreacion,
+      fecha: nueva.fecha,
+      hora: nueva.hora,
+      maquina: nueva.maquina,
+      descripcion: nueva.descripcion,
+      operario: nueva.operario,
+    }),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) throw new Error('Error al guardar la incidencia en PostgreSQL');
+  return mapearIncidenciaDesdeAPI(await res.json());
+}
+
+export async function actualizarIncidenciaAPI(inc: Incidencia): Promise<Incidencia> {
+  const res = await fetch(`${API_BASE_URL}/incidencias/${inc.id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({
+      estado: inc.estado,
+      repuestos_utilizados_json: JSON.stringify(inc.repuestosUtilizados || []),
+      fecha_resolucion: inc.fechaResolucion ?? null,
+      hora_resolucion: inc.horaResolucion ?? null,
+      tiempo_total_str: inc.tiempoTotalStr ?? null,
+    }),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) throw new Error('Error al actualizar la incidencia en PostgreSQL');
+  return mapearIncidenciaDesdeAPI(await res.json());
 }

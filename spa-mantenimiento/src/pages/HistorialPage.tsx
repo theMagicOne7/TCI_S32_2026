@@ -13,9 +13,9 @@ export function HistorialPage() {
   
   // 1. Calcular turno actual por defecto (Mañana: 6-14, Tarde: 14-22, Noche: 22-6)
   const horaActual = new Date().getHours();
-  const turnoActual = (horaActual >= 6 && horaActual < 14) ? 'mañana' 
-                    : (horaActual >= 14 && horaActual < 22) ? 'tarde' 
-                    : 'noche';
+  const turnoActual = (horaActual >= 6 && horaActual < 14) ? 'Mañana' 
+                    : (horaActual >= 14 && horaActual < 22) ? 'Tarde' 
+                    : 'Noche';
   const [filtroTurno, setFiltroTurno] = useState<string>(turnoActual);
 
   // CONTROL DE ACCESO (RBAC): Bloqueo estricto para perfiles no supervisores
@@ -171,9 +171,9 @@ export function HistorialPage() {
           }}
         >
           <option value="todos">Todos los turnos</option>
-          <option value="mañana">Mañana (06:00 - 14:00)</option>
-          <option value="tarde">Tarde (14:00 - 22:00)</option>
-          <option value="noche">Noche (22:00 - 06:00)</option>
+          <option value="Mañana">Mañana (06:00 - 14:00)</option>
+          <option value="Tarde">Tarde (14:00 - 22:00)</option>
+          <option value="Noche">Noche (22:00 - 06:00)</option>
         </select>
       </div>
 

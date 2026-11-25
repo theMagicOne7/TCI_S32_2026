@@ -16,7 +16,10 @@ import {
   actualizarRepuestoAPI, 
   crearRepuestoAPI, 
   fetchMovimientos, 
-  crearMovimientoAPI
+  crearMovimientoAPI,
+  fetchIncidencias,
+  crearIncidenciaAPI,
+  actualizarIncidenciaAPI
  } from '../data';
 import { NavBar } from '../components/NavBar';
 
@@ -28,11 +31,29 @@ interface AppLayoutProps {
   onCerrarSesion: () => void;
 }
 
+const STORAGE_OC_KEY = 'planta_ordenes_compra_v1';
+
 export function AppLayout({ tema, esModoOscuro, onToggleTema, usuarioActual, onCerrarSesion }: AppLayoutProps) {
   const [movimientos, setMovimientos] = useState<MovimientoStock[]>([]);
-  const [ordenesCompra, setOrdenesCompra] = useState<OrdenCompra[]>([]);
   const [repuestos, setRepuestos] = useState<Repuesto[]>([]);
   const [incidencias, setIncidencias] = useState<Incidencia[]>([]);
+
+  const [ordenesCompra, setOrdenesCompra] = useState<OrdenCompra[]>(() => {
+    try {
+      const guardado = localStorage.getItem(STORAGE_OC_KEY);
+      return guardado ? JSON.parse(guardado) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_OC_KEY, JSON.stringify(ordenesCompra));
+    } catch (e) {
+      console.warn('[AppLayout] No se pudo guardar OCs en localStorage:', e);
+    }
+  }, [ordenesCompra]);
 
   useEffect(() => {
     let activo = true;
@@ -49,6 +70,14 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema, usuarioActual, onC
       })
       .catch((err) => {
         console.warn('[AppLayout] No se pudo cargar el historial de auditorías:', err);
+      });
+
+    fetchIncidencias()
+      .then((lista) => {
+        if (activo) setIncidencias(lista);
+      })
+      .catch((err) => {
+        console.warn('[AppLayout] No se pudo cargar las incidencias desde la API:', err);
       });
 
     return () => {
@@ -88,16 +117,26 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema, usuarioActual, onC
   };
 
   const agregarMovimiento = (nuevo: MovimientoStock) => {
-    setMovimientos((prev) => [nuevo, ...prev]);
-    const { id: _idDescartable, ...payloadSinId } = nuevo;
     const motivo = (nuevo.motivoUso || '').toLowerCase();
     const areaDetectada =
       (nuevo as MovimientoStock & { area?: string }).area ||
-      (motivo.includes('depósito') || motivo.includes('oc-')) 
-      ? 'deposito'
-        : usuarioActual.area;
+      (motivo.includes('depósito') || motivo.includes('oc-')
+        ? 'deposito'
+        : usuarioActual.area === 'direccion'
+        ? 'mantenimiento'
+        : usuarioActual.area);
 
-    crearMovimientoAPI({ ...payloadSinId, area: areaDetectada })
+    const movimientoConArea = {
+      ...nuevo,
+      motivoUso: nuevo.motivoUso || '',
+      maquinaVinculada: nuevo.maquinaVinculada || 'N/A',
+      area: areaDetectada,
+    };
+    setMovimientos((prev) => [movimientoConArea, ...prev]);
+
+    const { id: _idDescartable, ...payloadSinId } = movimientoConArea;
+
+    crearMovimientoAPI(payloadSinId)
       .then((guardado) => {
         setMovimientos((prev) =>
           prev.map((m) => (m.id === nuevo.id ? guardado : m))
@@ -118,10 +157,25 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema, usuarioActual, onC
 
   const agregarIncidencia = (nueva: Incidencia) => {
     setIncidencias((prev) => [nueva, ...prev]);
+
+    crearIncidenciaAPI(nueva)
+      .then((guardada) => {
+        setIncidencias((prev) =>
+          prev.map((inc) => (inc.id === nueva.id ? guardada : inc))
+        );
+      })
+      .catch((err) => {
+        console.error('[AppLayout] Error al persistir incidencia en PostgreSQL:', err);
+      });
   };
 
   const actualizarIncidencia = (incModificada: Incidencia) => {
     setIncidencias((prev) => prev.map((inc) => (inc.id === incModificada.id ? incModificada : inc)));
+
+    actualizarIncidenciaAPI(incModificada)
+      .catch((err) => {
+        console.error('[AppLayout] Error al actualizar incidencia en PostgreSQL:', err);
+      });
   };
 
   return (
@@ -185,4 +239,4 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema, usuarioActual, onC
       </main>
     </div>
   );
-}
+}
