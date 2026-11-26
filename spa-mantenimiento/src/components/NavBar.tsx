@@ -157,9 +157,11 @@ export function NavBar({
         </NavLink>
 
         {esSupervisor && (
-          <NavLink to="/usuarios" style={getLinkStyle}>
-            👥 Personal
-          </NavLink>
+          <>
+            <NavLink to="/lista-repuestos" style={getLinkStyle}>📦 Lista de repuestos</NavLink>
+            <NavLink to="/maquinas" style={getLinkStyle}>🏭 Lista de máquinas</NavLink>
+            <NavLink to="/usuarios" style={getLinkStyle}>👥 Personal</NavLink>
+          </>
         )}
 
         {/* BOTONES DE AUDITORÍA DINÁMICOS POR ÁREA */}

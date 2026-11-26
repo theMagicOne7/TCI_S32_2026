@@ -93,6 +93,7 @@ def preparar_columnas_existentes() -> None:
     with engine.begin() as conexion:
         conexion.execute(text("ALTER TABLE usuario ADD COLUMN IF NOT EXISTS email VARCHAR"))
         conexion.execute(text("ALTER TABLE incidencia ALTER COLUMN timestamp_creacion TYPE BIGINT"))
+        conexion.execute(text("ALTER TABLE maquina ADD COLUMN IF NOT EXISTS descripcion VARCHAR"))
 
 
 @asynccontextmanager
@@ -527,6 +528,7 @@ def crear_maquina(
         codigo=codigo_norm,
         nombre=datos.nombre.strip(),
         sector=datos.sector.strip(),
+        descripcion=(datos.descripcion or "").strip() or None,
         estado=datos.estado,
     )
     session.add(nueva)
@@ -550,8 +552,12 @@ def actualizar_maquina(
         maquina.nombre = datos.nombre.strip()
     if datos.sector is not None:
         maquina.sector = datos.sector.strip()
+    if datos.descripcion is not None:
+        maquina.descripcion = datos.descripcion.strip() or None
     if datos.estado is not None:
         maquina.estado = datos.estado
+    elif datos.activa is not None:
+        maquina.estado = EstadoMaquina.ACTIVA if datos.activa else EstadoMaquina.FUERA_DE_SERVICIO
 
     session.add(maquina)
     session.commit()
@@ -633,6 +639,8 @@ def actualizar_repuesto(
             content={"error": f"Repuesto '{codigo}' no encontrado."},
         )
 
+    if datos.nombre is not None:
+        repuesto.nombre = datos.nombre.strip()
     if datos.ubicacion is not None:
         repuesto.ubicacion = datos.ubicacion.strip()
     if datos.stock_disponible is not None:

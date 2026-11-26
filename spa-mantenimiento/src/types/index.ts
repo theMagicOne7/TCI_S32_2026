@@ -29,7 +29,15 @@ export interface Repuesto {
     codigo: string;
     nombre: string;
     ubicacion: string;
-    stock_disponible: number; // Vamos a usar este nombre en toda la app
+    stock_disponible: number;
+}
+
+export interface Maquina {
+    codigo: string;
+    nombre: string;
+    descripcion?: string | null;
+    sector?: string;
+    estado: 'activa' | 'en_reparacion' | 'fuera_de_servicio';
 }
 
 // RN-06: Estructura inmutable del movimiento de stock
@@ -98,6 +106,7 @@ export interface LayoutContextType {
     actualizarOrdenCompra: (ocModificada: OrdenCompra) => void; //NUEVO
     repuestos: Repuesto[];
     actualizarRepuesto: (repueustoModificado: Repuesto) => void;
+    guardarRepuesto: (repuesto: Repuesto, codigoOriginal?: string) => Promise<Repuesto>;
     incidencias: Incidencia[];
     agregarIncidencia: (inc: Incidencia) => void;
     actualizarIncidencia: (inc: Incidencia) => void;
