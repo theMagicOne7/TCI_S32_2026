@@ -15,8 +15,9 @@ function MovimientoItem({ movimiento, tema, esModoOscuro }: MovimientoItemProps)
   
   const [verMotivo, setVerMotivo] = useState(false);
 
-  // 👇 LÓGICA INTELIGENTE: Diferenciar ingreso de depósito vs retiro técnico 👇
-  const esIngreso = maquinaVinculada === 'N/A';
+  // Los ingresos se identifican por el motivo que genera Recepción.
+  // Un consumo desde Repuestos puede no tener máquina vinculada, pero sigue siendo un retiro.
+  const esIngreso = (motivoUso || '').trim().toLowerCase().startsWith('ingreso a depósito por');
   const colorOperacion = esIngreso ? '#16a34a' : '#ef4444'; // Verde para ingreso, Rojo para retiro
   const signoOperacion = esIngreso ? '+' : '-';
 
