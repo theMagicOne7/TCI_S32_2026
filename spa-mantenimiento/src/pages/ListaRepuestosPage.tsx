@@ -9,7 +9,7 @@ export function ListaRepuestosPage() {
  const reset=()=>{setForm(vacio);setCodigoOriginal(undefined);setError('');};
  const submit=async(e:FormEvent)=>{e.preventDefault();setError('');setGuardando(true);try{await guardarRepuesto({...form,codigo:form.codigo.trim().toUpperCase(),nombre:form.nombre.trim(),ubicacion:form.ubicacion.trim()},codigoOriginal);reset();}catch(err){setError(err instanceof Error?err.message:'No se pudo guardar el repuesto.');}finally{setGuardando(false);}};
  const campo={width:'100%',padding:'10px 12px',border:`1px solid ${tema.borde}`,borderRadius:8,background:tema.fondoInput,color:tema.textoPrincipal,boxSizing:'border-box' as const}; const boton={padding:'8px 12px',borderRadius:7,border:`1px solid ${tema.borde}`,cursor:'pointer',color:tema.textoPrincipal,background:tema.fondoTarjeta,fontWeight:700};
- return <section style={{color:tema.textoPrincipal,display:'grid',gap:20}}><h2 style={{margin:0}}>📦 Lista de repuestos</h2>
+ return <section style={{color:tema.textoPrincipal,display:'grid',gap:20}}><h2 style={{margin:0,color:tema.acento}}>📦 Lista de repuestos</h2>
  <form onSubmit={submit} style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12,padding:18,border:`1px solid ${tema.borde}`,borderRadius:12}}>
  <label>Código<input style={campo} value={form.codigo} disabled={Boolean(codigoOriginal)} required placeholder="FIL-001" onChange={e=>setForm({...form,codigo:e.target.value})}/></label>
  <label>Descripción<input style={campo} value={form.nombre} required placeholder="Filtro de aire industrial" onChange={e=>setForm({...form,nombre:e.target.value})}/></label>

@@ -1,15 +1,30 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import type { LayoutContextType, Incidencia } from '../types';
+import { fetchMaquinas } from '../data';
+import type { LayoutContextType, Incidencia, Maquina } from '../types';
 
-// Simulamos algunas máquinas de la planta
-const MAQUINAS_PLANTA = ['CAL-01 (Caldera)', 'MIX-03 (Mezcladora)', 'FIL-02 (Filtro Principal)', 'CINTA-01 (Cinta Transportadora)'];
 
 export function NuevaIncidenciaPage() {
   const { tema, agregarIncidencia, usuarioActual } = useOutletContext<LayoutContextType>();
   
   const [maquina, setMaquina] = useState('');
   const [descripcion, setDescripcion] = useState('');
+  const [maquinas, setMaquinas] = useState<Maquina[]>([]);
+  const [cargandoMaquinas, setCargandoMaquinas] = useState(true);
+  const [errorMaquinas, setErrorMaquinas] = useState('');
+
+  useEffect(() => {
+    let activa = true;
+    fetchMaquinas()
+      .then((lista) => { if (activa) { setMaquinas(lista); setErrorMaquinas(''); } })
+      .catch((error: unknown) => {
+        if (activa) setErrorMaquinas(error instanceof Error ? error.message : 'No se pudieron cargar las máquinas.');
+      })
+      .finally(() => { if (activa) setCargandoMaquinas(false); });
+    return () => { activa = false; };
+  }, []);
+
+  const etiquetaMaquina = (m: Maquina) => `${m.codigo} (${m.nombre})`;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,10 +68,14 @@ export function NuevaIncidenciaPage() {
             onChange={e => setMaquina(e.target.value)}
             style={{ width: '100%', padding: '10px', borderRadius: '8px', border: `1px solid ${tema.borde}`, background: tema.fondoInput, color: tema.textoPrincipal }}
             required
+            disabled={cargandoMaquinas || Boolean(errorMaquinas) || maquinas.length === 0}
           >
             <option value="">Seleccione una máquina...</option>
-            {MAQUINAS_PLANTA.map(m => <option key={m} value={m}>{m}</option>)}
+            {maquinas.map(m => { const etiqueta = etiquetaMaquina(m); return <option key={m.codigo} value={etiqueta}>{etiqueta}</option>; })}
           </select>
+          {cargandoMaquinas && <p role="status" style={{ color: tema.textoSecundario, margin: '6px 0 0' }}>Cargando máquinas…</p>}
+          {errorMaquinas && <p role="alert" style={{ color: '#dc2626', margin: '6px 0 0' }}>{errorMaquinas}</p>}
+          {!cargandoMaquinas && !errorMaquinas && maquinas.length === 0 && <p style={{ color: tema.textoSecundario, margin: '6px 0 0' }}>Todavía no hay máquinas registradas.</p>}
         </div>
 
         <div>
