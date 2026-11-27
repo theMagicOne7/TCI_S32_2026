@@ -91,7 +91,13 @@ export interface OrdenCompra {
     numeroOC: string;
     proveedor: string;
     fechaEmision: string;
-    estado: 'pendiente' | 'parcial' | 'completada';
+    horaEmision?: string;
+    creadoPor?: string;
+    fechaRecepcion?: string;
+    horaRecepcion?: string;
+    recibidoPor?: string;
+    observacion?: string;
+    estado: 'pendiente' | 'parcial' | 'completada' | 'anulada';
     items: ItemOrden[];
 }
 
