@@ -14,6 +14,13 @@ class RolUsuario(str, Enum):
     ENCARGADO = "Encargado"
     SUPERVISOR = "Supervisor"
 
+class AreaUsuario(str, Enum):
+    PRODUCCION = "produccion"
+    MANTENIMIENTO = "mantenimiento"
+    DEPOSITO = "deposito"
+    DIRECCION = "direccion"
+
+
 class Usuario(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(unique=True, index=True)
@@ -25,6 +32,7 @@ class Usuario(SQLModel, table=True):
     hashed_password: str
     hashed_pin: Optional[str] = Field(default=None)
     rol: RolUsuario
+    area: AreaUsuario = Field(default=AreaUsuario.PRODUCCION)
     intentos_fallidos: int = Field(default=0)
     bloqueado: bool = Field(default=False)
 
@@ -42,12 +50,14 @@ class UsuarioCreate(SQLModel):
     apellido: Optional[str] = None
     nombre: Optional[str] = None
     rol: RolUsuario
+    area: AreaUsuario = AreaUsuario.PRODUCCION
     pin: Optional[str] = None
 
 class UsuarioUpdate(SQLModel):
     apellido: Optional[str] = None
     nombre: Optional[str] = None
     rol: Optional[RolUsuario] = None
+    area: Optional[AreaUsuario] = None
     bloqueado: Optional[bool] = None
     password: Optional[str] = None
 
@@ -57,6 +67,7 @@ class UsuarioPublic(SQLModel):
     apellido: Optional[str] = None
     nombre: Optional[str] = None
     rol: RolUsuario
+    area: AreaUsuario
     bloqueado: bool
 
 class RepuestoCreate(SQLModel):
@@ -201,3 +212,41 @@ class MovimientoStockCreate(SQLModel):
     motivoUso: str
     maquinaVinculada: str = "N/A"
     area: Optional[str] = None
+
+class OrdenCompra(SQLModel, table=True):
+    id: str = Field(primary_key=True, index=True)
+    numeroOC: str = Field(index=True)
+    proveedor: str
+    fechaEmision: str
+    horaEmision: Optional[str] = Field(default=None)
+    creadoPor: Optional[str] = Field(default=None)
+    fechaRecepcion: Optional[str] = Field(default=None)
+    horaRecepcion: Optional[str] = Field(default=None)
+    recibidoPor: Optional[str] = Field(default=None)
+    observacion: Optional[str] = Field(default=None)
+    estado: str = Field(default="pendiente")
+    items_json: str = Field(default="[]")
+
+
+class OrdenCompraCreate(SQLModel):
+    id: str
+    numeroOC: str
+    proveedor: str
+    fechaEmision: str
+    horaEmision: Optional[str] = None
+    creadoPor: Optional[str] = None
+    fechaRecepcion: Optional[str] = None
+    horaRecepcion: Optional[str] = None
+    recibidoPor: Optional[str] = None
+    observacion: Optional[str] = None
+    estado: str = "pendiente"
+    items_json: str = "[]"
+
+
+class OrdenCompraUpdate(SQLModel):
+    fechaRecepcion: Optional[str] = None
+    horaRecepcion: Optional[str] = None
+    recibidoPor: Optional[str] = None
+    observacion: Optional[str] = None
+    estado: Optional[str] = None
+    items_json: Optional[str] = None

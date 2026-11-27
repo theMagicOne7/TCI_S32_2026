@@ -35,7 +35,38 @@ export function RecepcionPage() {
   const [errorModal, setErrorModal] = useState('');
 
   const [mostrarModalAnular, setMostrarModalAnular] = useState(false);
-    const [observacionAnulacion, setObservacionAnulacion] = useState('');
+  const [observacionAnulacion, setObservacionAnulacion] = useState('');
+
+    // Control de acceso y visibilidad por rol y área (RBAC)
+  const rolNorm = (usuarioActual.rol || '').toLowerCase();
+  const puedeVerTodasLasOC =
+    rolNorm === 'encargado' ||
+    rolNorm === 'supervisor';
+
+  const tienePermisoRecepcion =
+    usuarioActual.area === 'deposito' || puedeVerTodasLasOC;
+
+  if (!tienePermisoRecepcion) {
+    return (
+      <div
+        style={{
+          maxWidth: '600px',
+          margin: '40px auto',
+          padding: '24px',
+          background: tema.fondoTarjeta,
+          border: '2px solid #ef4444',
+          borderRadius: '12px',
+          textAlign: 'center',
+          color: tema.textoPrincipal
+        }}
+      >
+        <h2 style={{ color: '#dc2626', marginTop: 0 }}>🚫 Acceso Restringido</h2>
+        <p style={{ color: tema.textoSecundario, marginBottom: 0 }}>
+          El módulo de <strong>Recepción de Materiales</strong> está habilitado únicamente para personal de <strong>Depósito</strong>, <strong>Encargados</strong> y <strong>Supervisión</strong>.
+        </p>
+      </div>
+    );
+  }
 
   const ocActiva = ordenesCompra.find(oc => oc.id === ocSeleccionadaId);
   const nuevoActual = colaNuevos[0] || null;
@@ -228,13 +259,7 @@ export function RecepcionPage() {
         return { bg: '#e0f2fe', color: '#0369a1', label: '⏳ Pendiente' };
     }
   };
-
-  // Control de visibilidad del historial por rol (RBAC)
-  const rolNorm = (usuarioActual.rol || '').toLowerCase();
-  const puedeVerTodasLasOC =
-    rolNorm === 'encargado' ||
-    rolNorm === 'supervisor';
-
+  
   const ordenesVisibles = puedeVerTodasLasOC
     ? ordenesCompra
     : ordenesCompra.filter(
@@ -266,7 +291,7 @@ export function RecepcionPage() {
           style={{ width: '100%', padding: '10px', borderRadius: '6px', marginBottom: '20px', background: tema.fondoTarjeta, color: tema.textoPrincipal, border: `1px solid ${tema.borde}` }}
         >
           <option value="">Seleccione una Orden de Compra pendiente...</option>
-          {ordenesVisibles
+          {ordenesCompra
             .filter(oc => oc.estado !== 'completada' && oc.estado !== 'anulada')
             .map(oc => (
               <option key={oc.id} value={oc.id}>

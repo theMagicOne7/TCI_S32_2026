@@ -31,15 +31,18 @@ export function NavBar({
     borderBottom: isActive ? `2px solid ${tema.acento}` : '2px solid transparent',
     paddingBottom: '6px',
     transition: 'all 0.2s ease',
-        display: 'flex', // Necesario para alinear texto y globito
+    display: 'flex', // Necesario para alinear texto y globito
     alignItems: 'center',
     gap: '6px'
   });
 
     // LÓGICA DE PERMISOS PARA LA BARRA DE NAVEGACIÓN
+  const rolNorm = (usuarioActual.rol || '').toLowerCase();
   const esDireccion = usuarioActual.area === 'direccion';
-  const esSupervisor = usuarioActual.rol === 'supervisor';
+  const esSupervisor = rolNorm === 'supervisor';
+  const esEncargado = rolNorm === 'encargado';
   const esAuditorMantenimiento = usuarioActual.area === 'mantenimiento' || esDireccion;
+  const puedeAccederRecepcion = usuarioActual.area === 'deposito' || esEncargado || esSupervisor;
 
   // 👇 4. LÓGICA DEL GLOBITO: Contamos solo las "pendientes" según el rol
   const incidenciasPendientes = (incidencias || []).filter(inc => {
@@ -152,9 +155,12 @@ export function NavBar({
         <NavLink to="/repuestos" style={getLinkStyle}>
           Repuestos (CU-01)
         </NavLink>
-        <NavLink to="/recepcion" style={getLinkStyle}>
-           🚚 Recepción 
-        </NavLink>
+
+        {puedeAccederRecepcion && (
+          <NavLink to="/recepcion" style={getLinkStyle}>
+             🚚 Recepción 
+          </NavLink>
+        )}
 
         {esSupervisor && (
           <>
