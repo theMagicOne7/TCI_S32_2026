@@ -291,7 +291,7 @@ export function RecepcionPage() {
           style={{ width: '100%', padding: '10px', borderRadius: '6px', marginBottom: '20px', background: tema.fondoTarjeta, color: tema.textoPrincipal, border: `1px solid ${tema.borde}` }}
         >
           <option value="">Seleccione una Orden de Compra pendiente...</option>
-          {ordenesVisibles
+          {ordenesCompra
             .filter(oc => oc.estado !== 'completada' && oc.estado !== 'anulada')
             .map(oc => (
               <option key={oc.id} value={oc.id}>

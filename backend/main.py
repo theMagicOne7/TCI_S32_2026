@@ -39,7 +39,11 @@ from models import (
     MaquinaUpdate,
     CodigoRecuperacion,
     MovimientoStock,
-    MovimientoStockCreate,)
+    MovimientoStockCreate,
+    OrdenCompra,
+    OrdenCompraCreate,
+    OrdenCompraUpdate,
+)
 
 # ==========================================
 # 1. CONFIGURACIÓN DE BASE DE DATOS Y SEGURIDAD
@@ -888,3 +892,73 @@ def registrar_movimiento(
     session.refresh(nuevo)
     return nuevo
 
+# ==========================================
+# 10. ÓRDENES DE COMPRA (PERSISTENCIA EN POSTGRESQL)
+# ==========================================
+
+@app.get("/ordenes-compra", response_model=List[OrdenCompra])
+def listar_ordenes_compra(
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    return session.exec(select(OrdenCompra)).all()
+
+
+@app.post("/ordenes-compra", response_model=OrdenCompra, status_code=status.HTTP_201_CREATED)
+def crear_orden_compra(
+    datos: OrdenCompraCreate,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    existente = session.get(OrdenCompra, datos.id)
+    if existente:
+        return existente
+
+    nueva = OrdenCompra(
+        id=datos.id,
+        numeroOC=datos.numeroOC,
+        proveedor=datos.proveedor,
+        fechaEmision=datos.fechaEmision,
+        horaEmision=datos.horaEmision,
+        creadoPor=datos.creadoPor,
+        fechaRecepcion=datos.fechaRecepcion,
+        horaRecepcion=datos.horaRecepcion,
+        recibidoPor=datos.recibidoPor,
+        observacion=datos.observacion,
+        estado=datos.estado,
+        items_json=datos.items_json,
+    )
+    session.add(nueva)
+    session.commit()
+    session.refresh(nueva)
+    return nueva
+
+
+@app.patch("/ordenes-compra/{oc_id}", response_model=OrdenCompra)
+def actualizar_orden_compra(
+    oc_id: str,
+    datos: OrdenCompraUpdate,
+    usuario_actual: Usuario = Depends(obtener_usuario_actual),
+    session: Session = Depends(get_session),
+):
+    oc = session.get(OrdenCompra, oc_id)
+    if not oc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Orden de compra no encontrada.")
+
+    if datos.estado is not None:
+        oc.estado = datos.estado
+    if datos.items_json is not None:
+        oc.items_json = datos.items_json
+    if datos.fechaRecepcion is not None:
+        oc.fechaRecepcion = datos.fechaRecepcion
+    if datos.horaRecepcion is not None:
+        oc.horaRecepcion = datos.horaRecepcion
+    if datos.recibidoPor is not None:
+        oc.recibidoPor = datos.recibidoPor
+    if datos.observacion is not None:
+        oc.observacion = datos.observacion
+
+    session.add(oc)
+    session.commit()
+    session.refresh(oc)
+    return oc

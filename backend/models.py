@@ -212,3 +212,41 @@ class MovimientoStockCreate(SQLModel):
     motivoUso: str
     maquinaVinculada: str = "N/A"
     area: Optional[str] = None
+
+class OrdenCompra(SQLModel, table=True):
+    id: str = Field(primary_key=True, index=True)
+    numeroOC: str = Field(index=True)
+    proveedor: str
+    fechaEmision: str
+    horaEmision: Optional[str] = Field(default=None)
+    creadoPor: Optional[str] = Field(default=None)
+    fechaRecepcion: Optional[str] = Field(default=None)
+    horaRecepcion: Optional[str] = Field(default=None)
+    recibidoPor: Optional[str] = Field(default=None)
+    observacion: Optional[str] = Field(default=None)
+    estado: str = Field(default="pendiente")
+    items_json: str = Field(default="[]")
+
+
+class OrdenCompraCreate(SQLModel):
+    id: str
+    numeroOC: str
+    proveedor: str
+    fechaEmision: str
+    horaEmision: Optional[str] = None
+    creadoPor: Optional[str] = None
+    fechaRecepcion: Optional[str] = None
+    horaRecepcion: Optional[str] = None
+    recibidoPor: Optional[str] = None
+    observacion: Optional[str] = None
+    estado: str = "pendiente"
+    items_json: str = "[]"
+
+
+class OrdenCompraUpdate(SQLModel):
+    fechaRecepcion: Optional[str] = None
+    horaRecepcion: Optional[str] = None
+    recibidoPor: Optional[str] = None
+    observacion: Optional[str] = None
+    estado: Optional[str] = None
+    items_json: Optional[str] = None

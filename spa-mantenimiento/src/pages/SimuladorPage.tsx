@@ -3,7 +3,7 @@ import { useLocation, useOutletContext } from 'react-router-dom';
 import { type LayoutContextType, type OrdenCompra, type ItemOrden } from '../types';
 
 export function SimuladorPage() {
-  const { tema, agregarOrdenCompra } = useOutletContext<LayoutContextType>();
+  const { tema, agregarOrdenCompra, usuarioActual } = useOutletContext<LayoutContextType>();
   const location = useLocation();
   const itemsIniciales: ItemOrden[] = location.state?.itemsPreseleccionados || [];
 
@@ -65,11 +65,14 @@ export function SimuladorPage() {
       return;
     }
 
+    const ahora = new Date();
     const nuevaOC: OrdenCompra = {
       id: `oc-${Date.now()}`,
       numeroOC: `OC-${Math.floor(Math.random() * 10000)}`,
       proveedor: 'Proveedor Simulado S.A.',
-      fechaEmision: new Date().toLocaleDateString(),
+      fechaEmision: ahora.toLocaleDateString('es-AR'),
+      horaEmision: ahora.toLocaleTimeString('es-AR', { hour12: false }),
+      creadoPor: `${usuarioActual.nombre} (${usuarioActual.rol})`,
       estado: 'pendiente',
       items: itemsTemporales
     };
