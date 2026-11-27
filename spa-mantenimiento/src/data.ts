@@ -1,6 +1,5 @@
 // CAPA DE ABSTRACCIÓN DE RED PARA LAS PETICIONES HTTP
-import { type Incidencia } from './types/index'; // (sumá Incidencia al import de arriba en data.ts)
-import { type AreaPlanta,type MovimientoStock, type Repuesto, type RolPlanta, type UsuarioPlanta } from './types/index';
+import { type AreaPlanta, type Incidencia, type Maquina, type MovimientoStock, type Repuesto, type RolPlanta, type UsuarioPlanta } from './types/index';
 export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 export const TOKEN_STORAGE_KEY = 'token_acceso';
 export const USER_STORAGE_KEY = 'usuario_sesion_planta';
@@ -135,7 +134,8 @@ export async function actualizarRepuestoAPI(repuesto: Repuesto): Promise<Repuest
     method: 'PATCH',
     headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({
-      ubicacion: repuesto.ubicacion,
+      nombre: repuesto.nombre.trim(),
+      ubicacion: repuesto.ubicacion.trim(),
       stock_disponible: repuesto.stock_disponible,
     }),
     signal: AbortSignal.timeout(5000),
@@ -146,6 +146,25 @@ export async function actualizarRepuestoAPI(repuesto: Repuesto): Promise<Repuest
     throw new Error(errData?.detail || errData?.error || `Error al actualizar el repuesto "${codLimpio}"`);
   }
 
+  return res.json();
+}
+
+export async function fetchMaquinas(): Promise<Maquina[]> {
+  const res = await fetch(`${API_BASE_URL}/maquinas`, { headers: getAuthHeaders({ 'Content-Type': 'application/json' }), signal: AbortSignal.timeout(5000) });
+  if (!res.ok) { const error = await res.json().catch(() => null); throw new Error(error?.detail || 'Error al cargar las máquinas'); }
+  return res.json();
+}
+
+export async function guardarMaquinaAPI(maquina: Maquina, codigoOriginal?: string): Promise<Maquina> {
+  const editando = Boolean(codigoOriginal);
+  const ruta = editando ? `/${encodeURIComponent(codigoOriginal!)}` : '';
+  const res = await fetch(`${API_BASE_URL}/maquinas${ruta}`, {
+    method: editando ? 'PATCH' : 'POST',
+    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ codigo: maquina.codigo.trim().toUpperCase(), nombre: maquina.nombre.trim(), descripcion: maquina.descripcion?.trim() || '', sector: maquina.sector?.trim() || '', estado: maquina.estado }),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) { const error = await res.json().catch(() => null); throw new Error(error?.detail || 'Error al guardar la máquina'); }
   return res.json();
 }
 

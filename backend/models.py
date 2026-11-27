@@ -72,6 +72,7 @@ class Repuesto(SQLModel, table=True):
     ubicacion: str
 
 class RepuestoUpdate(SQLModel):
+    nombre: Optional[str] = None
     ubicacion: Optional[str] = None
     stock_disponible: Optional[int] = Field(default=None, ge=0)
 
@@ -153,22 +154,27 @@ class EstadoMaquina(str, Enum):
     FUERA_DE_SERVICIO = "fuera_de_servicio"
     
 class Maquina(SQLModel, table=True):
-    codigo: str = Field(primary_key=True, index=True)  # Ej: "CAL-01", "ENV-02"
-    nombre: str                                        # Ej: "Caldera Principal"
-    sector: str                                        # Ej: "Producción"
+    codigo: str = Field(primary_key=True, index=True)
+    nombre: str
+    sector: str = Field(default="")
+    descripcion: Optional[str] = None
     estado: EstadoMaquina = Field(default=EstadoMaquina.ACTIVA)
 
 
 class MaquinaCreate(SQLModel):
     codigo: str
     nombre: str
-    sector: str
-    
+    sector: str = ""
+    descripcion: Optional[str] = None
+    estado: EstadoMaquina = EstadoMaquina.ACTIVA
+
 
 class MaquinaUpdate(SQLModel):
     nombre: Optional[str] = None
     sector: Optional[str] = None
+    descripcion: Optional[str] = None
     activa: Optional[bool] = None
+    estado: Optional[EstadoMaquina] = None
 
 
 

@@ -12,6 +12,8 @@ import { SimuladorPage } from './pages/SimuladorPage';
 import { NuevaIncidenciaPage } from './pages/NuevaIncidenciaPage';
 import { AuditoriaIncidenciasPage } from './pages/AuditoriaIncidenciasPage';
 import { UsuariosAdminPage } from './pages/UsuariosAdminPage';
+import { ListaRepuestosPage } from './pages/ListaRepuestosPage';
+import { ListaMaquinasPage } from './pages/ListaMaquinasPage';
 
 interface RouterConfigProps {
   tema: TemaPaleta;
@@ -58,6 +60,8 @@ export const createAppRouter = ({
           path: 'usuarios',
           element: <UsuariosAdminPage />
         },
+        { path: 'lista-repuestos', element: <ListaRepuestosPage /> },
+        { path: 'maquinas', element: <ListaMaquinasPage /> },
         // 👆 -------------------------------------- 👆
         
         // 👇 2. NUEVAS RUTAS DE AUDITORÍA AISLADAS POR DOMINIO 👇

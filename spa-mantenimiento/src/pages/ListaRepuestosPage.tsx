@@ -1,0 +1,21 @@
+import { type FormEvent, useMemo, useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import { type LayoutContextType, type Repuesto } from '../types';
+const vacio: Repuesto = { codigo: '', nombre: '', ubicacion: '', stock_disponible: 0 };
+export function ListaRepuestosPage() {
+ const { tema, repuestos, guardarRepuesto } = useOutletContext<LayoutContextType>();
+ const [form,setForm]=useState<Repuesto>(vacio); const [codigoOriginal,setCodigoOriginal]=useState<string>(); const [busqueda,setBusqueda]=useState(''); const [guardando,setGuardando]=useState(false); const [error,setError]=useState('');
+ const lista=useMemo(()=>repuestos.filter(r=>`${r.codigo} ${r.nombre}`.toLowerCase().includes(busqueda.trim().toLowerCase())),[repuestos,busqueda]);
+ const reset=()=>{setForm(vacio);setCodigoOriginal(undefined);setError('');};
+ const submit=async(e:FormEvent)=>{e.preventDefault();setError('');setGuardando(true);try{await guardarRepuesto({...form,codigo:form.codigo.trim().toUpperCase(),nombre:form.nombre.trim(),ubicacion:form.ubicacion.trim()},codigoOriginal);reset();}catch(err){setError(err instanceof Error?err.message:'No se pudo guardar el repuesto.');}finally{setGuardando(false);}};
+ const campo={width:'100%',padding:'10px 12px',border:`1px solid ${tema.borde}`,borderRadius:8,background:tema.fondoInput,color:tema.textoPrincipal,boxSizing:'border-box' as const}; const boton={padding:'8px 12px',borderRadius:7,border:`1px solid ${tema.borde}`,cursor:'pointer',color:tema.textoPrincipal,background:tema.fondoTarjeta,fontWeight:700};
+ return <section style={{color:tema.textoPrincipal,display:'grid',gap:20}}><h2 style={{margin:0,color:tema.acento}}>📦 Lista de repuestos</h2>
+ <form onSubmit={submit} style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12,padding:18,border:`1px solid ${tema.borde}`,borderRadius:12}}>
+ <label>Código<input style={campo} value={form.codigo} disabled={Boolean(codigoOriginal)} required placeholder="FIL-001" onChange={e=>setForm({...form,codigo:e.target.value})}/></label>
+ <label>Descripción<input style={campo} value={form.nombre} required placeholder="Filtro de aire industrial" onChange={e=>setForm({...form,nombre:e.target.value})}/></label>
+ <label>Ubicación<input style={campo} value={form.ubicacion} required placeholder="Estante A-4" onChange={e=>setForm({...form,ubicacion:e.target.value})}/></label>
+ <label>Stock<input style={campo} type="number" min={0} value={form.stock_disponible} required onChange={e=>setForm({...form,stock_disponible:Number(e.target.value)})}/></label>
+ <div style={{display:'flex',gap:8,alignItems:'end'}}><button style={{...boton,background:tema.acento,color:'#fff'}} disabled={guardando}>{guardando?'Guardando…':codigoOriginal?'Guardar cambios':'Crear repuesto'}</button>{codigoOriginal&&<button type="button" style={boton} onClick={reset}>Cancelar</button>}</div>{error&&<p role="alert" style={{color:'#dc2626',gridColumn:'1/-1',margin:0}}>{error}</p>}</form>
+ <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><h3 style={{margin:0}}>Repuestos registrados ({lista.length})</h3><input style={{...campo,maxWidth:360}} value={busqueda} placeholder="Buscar por código o descripción…" onChange={e=>setBusqueda(e.target.value)}/></div>
+ <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse'}}><thead><tr>{['Código','Descripción','Ubicación','Stock','Acciones'].map(t=><th key={t} style={{textAlign:'left',padding:10,borderBottom:`1px solid ${tema.borde}`}}>{t}</th>)}</tr></thead><tbody>{lista.map(r=><tr key={r.codigo}><td style={{padding:10,borderBottom:`1px solid ${tema.borde}`}}>{r.codigo}</td><td style={{padding:10,borderBottom:`1px solid ${tema.borde}`}}>{r.nombre}</td><td style={{padding:10,borderBottom:`1px solid ${tema.borde}`}}>{r.ubicacion}</td><td style={{padding:10,borderBottom:`1px solid ${tema.borde}`}}>{r.stock_disponible}</td><td style={{padding:10,borderBottom:`1px solid ${tema.borde}`}}><button style={boton} onClick={()=>{setForm(r);setCodigoOriginal(r.codigo);window.scrollTo({top:0,behavior:'smooth'});}}>Editar</button></td></tr>)}{!lista.length&&<tr><td colSpan={5} style={{padding:20,textAlign:'center'}}>No hay repuestos que coincidan con la búsqueda.</td></tr>}</tbody></table></div></section>;
+}

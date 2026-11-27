@@ -116,6 +116,21 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema, usuarioActual, onC
       });
   };
 
+  const guardarRepuesto = async (repuesto: Repuesto, codigoOriginal?: string): Promise<Repuesto> => {
+    const codigoBase = (codigoOriginal || repuesto.codigo).trim().toUpperCase();
+    const existe = repuestos.some((r) => r.codigo.trim().toUpperCase() === codigoBase);
+    const guardado = existe
+      ? await actualizarRepuestoAPI({ ...repuesto, codigo: codigoOriginal || repuesto.codigo })
+      : await crearRepuestoAPI(repuesto);
+    setRepuestos((prev) => {
+      const anteriores = codigoOriginal
+        ? prev.filter((r) => r.codigo.toUpperCase() !== codigoOriginal.toUpperCase())
+        : prev.filter((r) => r.codigo.toUpperCase() !== guardado.codigo.toUpperCase());
+      return [...anteriores, guardado].sort((a, b) => a.codigo.localeCompare(b.codigo));
+    });
+    return guardado;
+  };
+
   const agregarMovimiento = (nuevo: MovimientoStock) => {
     const motivo = (nuevo.motivoUso || '').toLowerCase();
     const areaDetectada =
@@ -230,6 +245,7 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema, usuarioActual, onC
               actualizarOrdenCompra,
               repuestos,
               actualizarRepuesto,
+              guardarRepuesto,
               incidencias,
               agregarIncidencia,
               actualizarIncidencia
@@ -239,4 +255,4 @@ export function AppLayout({ tema, esModoOscuro, onToggleTema, usuarioActual, onC
       </main>
     </div>
   );
-}
+}
