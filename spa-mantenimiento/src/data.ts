@@ -11,23 +11,26 @@ export interface LoginRespuesta {
   nombre: string;
   apellido: string;
   rol: string;
+  area?: string;
 }
 
 export function mapearRespuestaAUsuarioPlanta(respuesta: LoginRespuesta): UsuarioPlanta {
-  const rolBackend = respuesta.rol.toLowerCase();
+  const rolBackend = (respuesta.rol || '').toLowerCase();
   let rol: RolPlanta = 'operario';
-  let area: AreaPlanta = 'produccion';
 
   if (rolBackend === 'supervisor') {
     rol = 'supervisor';
-    area = 'direccion';
-  } else if (rolBackend === 'mantenimiento') {
-    rol = 'tecnico';
-    area = 'mantenimiento';
   } else if (rolBackend === 'encargado') {
     rol = 'encargado';
-    area = 'deposito';
   }
+
+  const areaBackend = (respuesta.area || '').toLowerCase();
+  const areasValidas: AreaPlanta[] = ['produccion', 'mantenimiento', 'deposito', 'direccion'];
+  const area: AreaPlanta = areasValidas.includes(areaBackend as AreaPlanta)
+    ? (areaBackend as AreaPlanta)
+    : rol === 'supervisor'
+    ? 'direccion'
+    : 'produccion';
 
   const nombre = `${respuesta.nombre || ''} ${respuesta.apellido || ''}`.trim() || respuesta.usuario;
   return { id: respuesta.usuario, nombre, legajo: respuesta.usuario.toUpperCase(), rol, area };

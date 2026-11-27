@@ -19,6 +19,7 @@ from datetime import datetime, timedelta, timezone
 
 from models import (
     RolUsuario,
+    AreaUsuario,
     Usuario,
     Repuesto,
     RepuestoCreate,
@@ -70,6 +71,7 @@ def seed_initial_data() -> None:
                 apellido="Ballarre",
                 hashed_password=pwd_context.hash("admin123"),
                 rol=RolUsuario.SUPERVISOR,
+                area=AreaUsuario.DIRECCION,
             )
             session.add(usuario_principal)
 
@@ -92,6 +94,7 @@ def preparar_columnas_existentes() -> None:
         return
     with engine.begin() as conexion:
         conexion.execute(text("ALTER TABLE usuario ADD COLUMN IF NOT EXISTS email VARCHAR"))
+        conexion.execute(text("ALTER TABLE usuario ADD COLUMN IF NOT EXISTS area VARCHAR DEFAULT 'produccion'"))
         conexion.execute(text("ALTER TABLE incidencia ALTER COLUMN timestamp_creacion TYPE BIGINT"))
         conexion.execute(text("ALTER TABLE maquina ADD COLUMN IF NOT EXISTS descripcion VARCHAR"))
 
@@ -241,10 +244,13 @@ def login(request: Request, datos: dict, session: Session = Depends(get_session)
         user.intentos_fallidos = 0
         session.commit()
 
+    area_valor = user.area.value if hasattr(user.area, "value") else (user.area or "produccion")
+
     # 6. Emitir JWT para mantener la sesión entre requests
     payload = {
         "sub": user.username,
         "rol": user.rol.value,
+        "area": area_valor,
         "exp": datetime.now(timezone.utc) + timedelta(hours=2)
     }
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
@@ -255,7 +261,8 @@ def login(request: Request, datos: dict, session: Session = Depends(get_session)
         "usuario": user.username,
         "nombre": user.nombre,
         "apellido": user.apellido,
-        "rol": user.rol.value
+        "rol": user.rol.value,
+        "area": area_valor,
     }
 
 
@@ -326,6 +333,7 @@ def crear_nuevo_usuario(
     nuevo_username = (datos.get("username") or "").strip()
     nueva_password = datos.get("password")
     nuevo_rol = datos.get("rol")
+    nueva_area = datos.get("area")
     nombre = (datos.get("nombre") or datos.get("nombre_completo") or nuevo_username).strip()
     apellido = (datos.get("apellido") or "").strip()
     email = (datos.get("email") or "").strip().lower() or None
@@ -340,6 +348,16 @@ def crear_nuevo_usuario(
         roles_validos = [r.value for r in RolUsuario]
         raise HTTPException(status_code=400, detail=f"Rol inválido. Opciones: {roles_validos}")
 
+    # Validar área (por defecto 'direccion' si es Supervisor, o 'produccion' si no se indica)
+    if not nueva_area:
+        area_enum = AreaUsuario.DIRECCION if rol_enum == RolUsuario.SUPERVISOR else AreaUsuario.PRODUCCION
+    else:
+        try:
+            area_enum = AreaUsuario(nueva_area.strip().lower())
+        except ValueError:
+            areas_validas = [a.value for a in AreaUsuario]
+            raise HTTPException(status_code=400, detail=f"Área inválida. Opciones: {areas_validas}")
+
     # Verificar que no exista un usuario duplicado
     existente = session.exec(
         select(Usuario.id).where(Usuario.username.ilike(nuevo_username))).first()
@@ -352,7 +370,8 @@ def crear_nuevo_usuario(
         nombre=nombre,
         email=email,
         hashed_password=pwd_context.hash(nueva_password),
-        rol=rol_enum
+        rol=rol_enum,
+        area=area_enum,
     )
     session.add(nuevo_usuario)
     session.commit()
@@ -367,10 +386,12 @@ def crear_nuevo_usuario(
             "nombre": nuevo_usuario.nombre,
             "email": nuevo_usuario.email,
             "rol": nuevo_usuario.rol.value,
+            "area": nuevo_usuario.area.value,
             "bloqueado": nuevo_usuario.bloqueado,
             "intentos_fallidos": nuevo_usuario.intentos_fallidos,
         },
-        "rol": nuevo_usuario.rol.value
+        "rol": nuevo_usuario.rol.value,
+        "area": nuevo_usuario.area.value,
     }
 
 @app.delete("/usuarios/{username_a_eliminar}", status_code=200)
@@ -416,6 +437,7 @@ def listar_usuarios(
             "nombre": u.nombre,
             "email": u.email,
             "rol": u.rol.value if hasattr(u.rol, "value") else u.rol,
+            "area": u.area.value if hasattr(u.area, "value") else (u.area or "produccion"),
             "bloqueado": u.bloqueado,
             "intentos_fallidos": u.intentos_fallidos
         }
@@ -435,6 +457,7 @@ def editar_usuario(
     nuevo_username = (datos.get("username") or "").strip() or None
     nueva_password = datos.get("password")
     nuevo_rol = datos.get("rol")
+    nueva_area = datos.get("area")
     nuevo_apellido = datos.get("apellido")
     nuevo_nombre = datos.get("nombre")
     nuevo_email = datos.get("email")
@@ -446,8 +469,8 @@ def editar_usuario(
                 or_(
                     Usuario.username == username_a_editar,
                     Usuario.username.ilike(nuevo_username),
+                )
             )
-        )
         ).all()
         user_db = next((u for u in candidatos if u.username == username_a_editar), None)
         if not user_db:
@@ -486,6 +509,13 @@ def editar_usuario(
             roles_validos = [r.value for r in RolUsuario]
             raise HTTPException(status_code=400, detail=f"Rol inválido. Opciones: {roles_validos}")
 
+    if nueva_area:
+        try:
+            user_db.area = AreaUsuario(nueva_area.strip().lower())
+        except ValueError:
+            areas_validas = [a.value for a in AreaUsuario]
+            raise HTTPException(status_code=400, detail=f"Área inválida. Opciones: {areas_validas}")
+
     session.commit()
     session.refresh(user_db)
 
@@ -493,6 +523,7 @@ def editar_usuario(
         "mensaje": f"Usuario '{user_db.username}' actualizado exitosamente",
         "usuario": user_db.username,
         "rol": user_db.rol.value,
+        "area": user_db.area.value if hasattr(user_db.area, "value") else user_db.area,
         "apellido": user_db.apellido,
         "nombre": user_db.nombre,
         "email": user_db.email,

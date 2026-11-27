@@ -14,6 +14,13 @@ class RolUsuario(str, Enum):
     ENCARGADO = "Encargado"
     SUPERVISOR = "Supervisor"
 
+class AreaUsuario(str, Enum):
+    PRODUCCION = "produccion"
+    MANTENIMIENTO = "mantenimiento"
+    DEPOSITO = "deposito"
+    DIRECCION = "direccion"
+
+
 class Usuario(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(unique=True, index=True)
@@ -25,6 +32,7 @@ class Usuario(SQLModel, table=True):
     hashed_password: str
     hashed_pin: Optional[str] = Field(default=None)
     rol: RolUsuario
+    area: AreaUsuario = Field(default=AreaUsuario.PRODUCCION)
     intentos_fallidos: int = Field(default=0)
     bloqueado: bool = Field(default=False)
 
@@ -42,12 +50,14 @@ class UsuarioCreate(SQLModel):
     apellido: Optional[str] = None
     nombre: Optional[str] = None
     rol: RolUsuario
+    area: AreaUsuario = AreaUsuario.PRODUCCION
     pin: Optional[str] = None
 
 class UsuarioUpdate(SQLModel):
     apellido: Optional[str] = None
     nombre: Optional[str] = None
     rol: Optional[RolUsuario] = None
+    area: Optional[AreaUsuario] = None
     bloqueado: Optional[bool] = None
     password: Optional[str] = None
 
@@ -57,6 +67,7 @@ class UsuarioPublic(SQLModel):
     apellido: Optional[str] = None
     nombre: Optional[str] = None
     rol: RolUsuario
+    area: AreaUsuario
     bloqueado: bool
 
 class RepuestoCreate(SQLModel):

@@ -7,9 +7,17 @@ interface UsuarioItem {
   nombre?: string;
   email?: string;
   rol: string;
+  area?: string;
   bloqueado: boolean;
   intentos_fallidos: number;
 }
+
+const ETIQUETAS_AREA: Record<string, string> = {
+  produccion: 'Producción',
+  mantenimiento: 'Mantenimiento',
+  deposito: 'Depósito',
+  direccion: 'Dirección',
+};
 
 export const UsuariosAdminPage: React.FC = () => {
   const [usuarios, setUsuarios] = useState<UsuarioItem[]>([]);
@@ -23,6 +31,7 @@ export const UsuariosAdminPage: React.FC = () => {
   const [emailInput, setEmailInput] = useState('');
   const [nuevaPassword, setNuevaPassword] = useState('');
   const [nuevoRol, setNuevoRol] = useState('Operario');
+  const [nuevaArea, setNuevaArea] = useState('produccion');
   const [busqueda, setBusqueda] = useState('');
 
   const obtenerUsuarios = async () => {
@@ -57,7 +66,8 @@ export const UsuariosAdminPage: React.FC = () => {
         apellido: apellidoInput,
         nombre: nombreInput,
         email: emailInput,
-        rol: nuevoRol
+        rol: nuevoRol,
+        area: nuevoRol === 'Supervisor' ? 'direccion' : nuevaArea,
       };
 
       if (!usernameOriginal || nuevaPassword.trim() !== '') {
@@ -90,7 +100,13 @@ export const UsuariosAdminPage: React.FC = () => {
     setNombreInput(user.nombre || '');
     setEmailInput(user.email || '');
     setNuevaPassword('');
-    setNuevoRol(user.rol);
+    const rolNormalizado = user.rol === 'Mantenimiento' ? 'Operario' : user.rol;
+    setNuevoRol(rolNormalizado);
+    setNuevaArea(
+      rolNormalizado === 'Supervisor'
+        ? 'direccion'
+        : user.area || (user.rol === 'Mantenimiento' ? 'mantenimiento' : 'produccion')
+    );
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -102,6 +118,7 @@ export const UsuariosAdminPage: React.FC = () => {
     setEmailInput('');
     setNuevaPassword('');
     setNuevoRol('Operario');
+    setNuevaArea('produccion');
   };
 
   const handleEliminar = async (username: string) => {
@@ -200,11 +217,42 @@ export const UsuariosAdminPage: React.FC = () => {
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '800', color: '#111827', marginBottom: '8px' }}>Rol</label>
-            <select value={nuevoRol} onChange={(e) => setNuevoRol(e.target.value)} style={{ width: '100%', border: '2px solid #d1d5db', borderRadius: '8px', padding: '10px', fontSize: '0.9rem', color: '#111827', background: '#ffffff', outline: 'none', fontWeight: '600', boxSizing: 'border-box' }}>
+            <select
+              value={nuevoRol}
+              onChange={(e) => {
+                const rolElegido = e.target.value;
+                setNuevoRol(rolElegido);
+                if (rolElegido === 'Supervisor') {
+                  setNuevaArea('direccion');
+                } else if (nuevaArea === 'direccion') {
+                  setNuevaArea('produccion');
+                }
+              }}
+              style={{ width: '100%', border: '2px solid #d1d5db', borderRadius: '8px', padding: '10px', fontSize: '0.9rem', color: '#111827', background: '#ffffff', outline: 'none', fontWeight: '600', boxSizing: 'border-box' }}
+            >
               <option value="Operario">Operario</option>
               <option value="Mantenimiento">Mantenimiento</option>
               <option value="Encargado">Encargado</option>
               <option value="Supervisor">Supervisor</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '800', color: '#111827', marginBottom: '8px' }}>Área</label>
+            <select
+              value={nuevaArea}
+              onChange={(e) => setNuevaArea(e.target.value)}
+              disabled={nuevoRol === 'Supervisor'}
+              style={{ width: '100%', border: '2px solid #d1d5db', borderRadius: '8px', padding: '10px', fontSize: '0.9rem', color: '#111827', background: nuevoRol === 'Supervisor' ? '#f3f4f6' : '#ffffff', outline: 'none', fontWeight: '600', boxSizing: 'border-box' }}
+            >
+              {nuevoRol === 'Supervisor' ? (
+                <option value="direccion">Dirección (General)</option>
+              ) : (
+                <>
+                  <option value="produccion">Producción</option>
+                  <option value="mantenimiento">Mantenimiento</option>
+                  <option value="deposito">Depósito</option>
+                </>
+              )}
             </select>
           </div>
           <div>
@@ -229,6 +277,7 @@ export const UsuariosAdminPage: React.FC = () => {
                 <th style={{ padding: '14px 18px', fontSize: '0.82rem', fontWeight: '800', color: '#1f2937', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Apellido y Nombre</th>
                 <th style={{ padding: '14px 18px', fontSize: '0.82rem', fontWeight: '800', color: '#1f2937', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Usuario</th>
                 <th style={{ padding: '14px 18px', fontSize: '0.82rem', fontWeight: '800', color: '#1f2937', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rol</th>
+                <th style={{ padding: '14px 18px', fontSize: '0.82rem', fontWeight: '800', color: '#1f2937', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Área</th>
                 <th style={{ padding: '14px 18px', fontSize: '0.82rem', fontWeight: '800', color: '#1f2937', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Estado</th>
                 <th style={{ padding: '14px 18px', fontSize: '0.82rem', fontWeight: '800', color: '#1f2937', textTransform: 'uppercase', textAlign: 'right', whiteSpace: 'nowrap' }}>Acciones</th>
               </tr>
@@ -236,7 +285,7 @@ export const UsuariosAdminPage: React.FC = () => {
             <tbody>
               {usuariosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: '#4b5563', fontWeight: '600', fontSize: '0.95rem' }}>
+                  <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#4b5563', fontWeight: '600', fontSize: '0.95rem' }}>
                     No se encontraron usuarios que coincidan con la búsqueda.
                   </td>
                 </tr>
@@ -251,6 +300,9 @@ export const UsuariosAdminPage: React.FC = () => {
                     </td>
                     <td style={{ padding: '16px 18px', fontSize: '0.88rem', fontWeight: '700', color: '#111827', textTransform: 'capitalize', whiteSpace: 'nowrap' }}>
                       {user.rol}
+                    </td>
+                    <td style={{ padding: '16px 18px', fontSize: '0.88rem', fontWeight: '600', color: '#0f766e', whiteSpace: 'nowrap' }}>
+                      {ETIQUETAS_AREA[(user.area || '').toLowerCase()] || user.area || 'Producción'}
                     </td>
                     <td style={{ padding: '16px 18px', fontSize: '0.88rem', whiteSpace: 'nowrap' }}>
                       {user.bloqueado ? (
