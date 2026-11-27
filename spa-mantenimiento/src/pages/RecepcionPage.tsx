@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { type LayoutContextType, type ItemOrden } from '../types';
+import { type LayoutContextType, type ItemOrden, type OrdenCompra } from '../types';
 
 interface NuevoRepuestoPendiente {
   codigo: string;
@@ -25,6 +25,7 @@ export function RecepcionPage() {
   
   const [ocSeleccionadaId, setOcSeleccionadaId] = useState('');
   const [cantidadARecibir, setCantidadARecibir] = useState<Record<string, number>>({});
+  const [observacionRecepcion, setObservacionRecepcion] = useState('');
 
   // Estados para el modal de alta de repuesto inexistente
   const [colaNuevos, setColaNuevos] = useState<NuevoRepuestoPendiente[]>([]);
@@ -33,12 +34,16 @@ export function RecepcionPage() {
   const [ubicacionNueva, setUbicacionNueva] = useState('');
   const [errorModal, setErrorModal] = useState('');
 
+  const [mostrarModalAnular, setMostrarModalAnular] = useState(false);
+    const [observacionAnulacion, setObservacionAnulacion] = useState('');
+
   const ocActiva = ordenesCompra.find(oc => oc.id === ocSeleccionadaId);
   const nuevoActual = colaNuevos[0] || null;
 
   const ejecutarConfirmacionFinal = (datosConfirmados: Record<string, DatosNuevoRepuesto>) => {
     if (!ocActiva) return;
 
+    const fechaRecepcionObj = new Date();
     const ocActualizada = { ...ocActiva };
     let todasCompletas = true;
 
@@ -51,8 +56,7 @@ export function RecepcionPage() {
       }
 
       if (cantidadIngresada > 0) {
-        const fechaActual = new Date();
-        const horaNum = fechaActual.getHours();
+        const horaNum = fechaRecepcionObj.getHours();
         const turnoActual = (horaNum >= 6 && horaNum < 14) ? 'Mañana' 
                           : (horaNum >= 14 && horaNum < 22) ? 'Tarde' 
                           : 'Noche';
@@ -62,8 +66,8 @@ export function RecepcionPage() {
         // 1. Generamos el remito de auditoría
         agregarMovimiento({
           id: Date.now() + Math.floor(Math.random() * 1000),
-          fecha: fechaActual.toLocaleDateString('es-AR'),
-          hora: fechaActual.toLocaleTimeString('es-AR', { hour12: false }),
+          fecha: fechaRecepcionObj.toLocaleDateString('es-AR'),
+          hora: fechaRecepcionObj.toLocaleTimeString('es-AR', { hour12: false }),
           codigo: codigoNorm,  
           cantidad: cantidadIngresada,
           operario: usuarioActual.nombre, 
@@ -100,8 +104,17 @@ export function RecepcionPage() {
     });
 
     ocActualizada.estado = todasCompletas ? 'completada' : 'parcial';
+    ocActualizada.fechaRecepcion = fechaRecepcionObj.toLocaleDateString('es-AR');
+    ocActualizada.horaRecepcion = fechaRecepcionObj.toLocaleTimeString('es-AR', { hour12: false });
+    ocActualizada.recibidoPor = `${usuarioActual.nombre} (${usuarioActual.rol})`;
+
+    if (observacionRecepcion.trim()) {
+      ocActualizada.observacion = observacionRecepcion.trim();
+    }
+
     actualizarOrdenCompra(ocActualizada);
     setCantidadARecibir({});
+    setObservacionRecepcion('');
     setColaNuevos([]);
     setDatosAltaMap({});
     
@@ -109,7 +122,7 @@ export function RecepcionPage() {
       setOcSeleccionadaId(''); 
       alert('¡Excelente! La orden fue recibida por completo y cerrada.');
     } else {
-      alert('Recepción parcial guardada con éxito.');
+      alert('Recepción parcial guardada con éxito. Podrás completar el remanente cuando llegue el resto del pedido.');
     }
   };
 
@@ -180,6 +193,56 @@ export function RecepcionPage() {
     setErrorModal('');
   };
 
+  
+  const handleConfirmarAnulacionOC = () => {
+    if (!ocActiva) return;
+    const obsLimpia = observacionAnulacion.trim() || 'Orden anulada por error de tipeo';
+    const ahora = new Date();
+
+    const ocAnulada: OrdenCompra = {
+      ...ocActiva,
+      estado: 'anulada',
+      observacion: obsLimpia,
+      recibidoPor: `${usuarioActual.nombre} (${usuarioActual.rol})`,
+      fechaRecepcion: ahora.toLocaleDateString('es-AR'),
+      horaRecepcion: ahora.toLocaleTimeString('es-AR', { hour12: false }),
+    };
+
+    actualizarOrdenCompra(ocAnulada);
+    setMostrarModalAnular(false);
+    setObservacionAnulacion('');
+    setObservacionRecepcion('');
+    setCantidadARecibir({});
+    setOcSeleccionadaId('');
+  };
+
+  const getBadgeEstado = (estado: OrdenCompra['estado']) => {
+    switch (estado) {
+      case 'completada':
+        return { bg: '#dcfce7', color: '#15803d', label: '✓ Completada' };
+      case 'parcial':
+        return { bg: '#fef3c7', color: '#b45309', label: '◐ Recepción Parcial' };
+      case 'anulada':
+        return { bg: '#fee2e2', color: '#b91c1c', label: '✕ Anulada' };
+      default:
+        return { bg: '#e0f2fe', color: '#0369a1', label: '⏳ Pendiente' };
+    }
+  };
+
+  // Control de visibilidad del historial por rol (RBAC)
+  const rolNorm = (usuarioActual.rol || '').toLowerCase();
+  const puedeVerTodasLasOC =
+    rolNorm === 'encargado' ||
+    rolNorm === 'supervisor';
+
+  const ordenesVisibles = puedeVerTodasLasOC
+    ? ordenesCompra
+    : ordenesCompra.filter(
+        (oc) =>
+          oc.recibidoPor &&
+          oc.recibidoPor.toLowerCase().includes(usuarioActual.nombre.toLowerCase())
+      );
+
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
@@ -194,18 +257,56 @@ export function RecepcionPage() {
 
         <select 
           value={ocSeleccionadaId} 
-          onChange={e => setOcSeleccionadaId(e.target.value)}
+          onChange={e => {
+            setOcSeleccionadaId(e.target.value);
+            setCantidadARecibir({});
+            const ocElegida = ordenesCompra.find(o => o.id === e.target.value);
+            setObservacionRecepcion(ocElegida?.observacion || '');
+          }}
           style={{ width: '100%', padding: '10px', borderRadius: '6px', marginBottom: '20px', background: tema.fondoTarjeta, color: tema.textoPrincipal, border: `1px solid ${tema.borde}` }}
         >
           <option value="">Seleccione una Orden de Compra pendiente...</option>
-          {ordenesCompra.filter(oc => oc.estado !== 'completada').map(oc => (
-            <option key={oc.id} value={oc.id}>{oc.numeroOC} - {oc.proveedor} ({oc.estado})</option>
-          ))}
+          {ordenesVisibles
+            .filter(oc => oc.estado !== 'completada' && oc.estado !== 'anulada')
+            .map(oc => (
+              <option key={oc.id} value={oc.id}>
+                {oc.numeroOC} - {oc.proveedor} ({oc.estado})
+              </option>
+            ))}
         </select>
 
         {ocActiva && (
           <div style={{ background: tema.fondoTarjeta, padding: '20px', borderRadius: '8px', border: `1px solid ${tema.borde}` }}>
-            <h3 style={{ marginTop: 0, color: tema.textoPrincipal }}>Detalle de {ocActiva.numeroOC}</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+              <div>
+                <h3 style={{ margin: 0, color: tema.textoPrincipal }}>Detalle de {ocActiva.numeroOC}</h3>
+                <span style={{ fontSize: '0.8rem', color: tema.textoSecundario }}>
+                  Emitida por: <strong>{ocActiva.creadoPor || 'No registrado'}</strong> • {ocActiva.fechaEmision} {ocActiva.horaEmision || ''}
+                </span>
+              </div>
+
+              {ocActiva.estado === 'pendiente' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setObservacionAnulacion('');
+                    setMostrarModalAnular(true);
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    background: 'transparent',
+                    color: '#dc2626',
+                    border: '1px solid #dc2626',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  🚫 Anular OC
+                </button>
+              )}
+            </div>
             
             {ocActiva.items.map((item: ItemOrden, index: number) => {
               const pendiente = item.cantidadPedida - item.cantidadYaRecibida;
@@ -223,7 +324,10 @@ export function RecepcionPage() {
                       </span>
                     )}
                   </div>
-                  <span style={{ color: tema.textoSecundario, flex: 1 }}>Pedida: {item.cantidadPedida} | Recibida: {item.cantidadYaRecibida}</span>
+                  <span style={{ color: tema.textoSecundario, flex: 1 }}>
+                    Pedida: <strong>{item.cantidadPedida}</strong> | Recibida: <strong>{item.cantidadYaRecibida}</strong>{' '}
+                    {pendiente > 0 && <span style={{ color: '#d97706' }}>(Faltan {pendiente})</span>}
+                  </span>
                   
                   {pendiente > 0 ? (
                     <input 
@@ -240,14 +344,37 @@ export function RecepcionPage() {
                         }
                         setCantidadARecibir({...cantidadARecibir, [item.codigoRepuesto]: val});
                       }}
-                      style={{ padding: '8px', width: '90px', borderRadius: '4px', border: `1px solid ${tema.borde}` }}
+                      style={{ padding: '8px', width: '90px', borderRadius: '4px', border: `1px solid ${tema.borde}`, background: tema.fondoPagina, color: tema.textoPrincipal }}
                     />
                   ) : (
                     <span style={{ color: '#28a745', fontWeight: 'bold' }}>✓ Completo</span>
                   )}
                 </div>
-              )
+              );
             })}
+
+            {/* Campo general de observación */}
+            <div style={{ marginTop: '14px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: tema.textoSecundario, marginBottom: '6px', fontWeight: 600 }}>
+                Observación (opcional)
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: Entrega parcial por faltante de proveedor / Remito N° 4521..."
+                value={observacionRecepcion}
+                onChange={(e) => setObservacionRecepcion(e.target.value)}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '9px 12px',
+                  borderRadius: '6px',
+                  border: `1px solid ${tema.borde}`,
+                  background: tema.fondoPagina,
+                  color: tema.textoPrincipal,
+                  fontSize: '0.88rem'
+                }}
+              />
+            </div>
 
             <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
               <button 
@@ -270,6 +397,200 @@ export function RecepcionPage() {
           </div>
         )}
       </section>
+
+
+      {/* ── SECCIÓN 2: HISTORIAL COMPLETO DE ÓRDENES DE COMPRA ── */}
+      <section style={{ borderTop: `2px solid ${tema.borde}`, paddingTop: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <h3 style={{ margin: 0, color: tema.textoPrincipal }}>
+            📋 {puedeVerTodasLasOC ? 'Historial Completo de Órdenes de Compra' : 'Mis Órdenes de Compra Recibidas'} ({ordenesVisibles.length})
+          </h3>
+        </div>
+
+        {ordenesVisibles.length === 0 ? (
+          <p style={{ color: tema.textoSecundario, fontSize: '0.9rem', fontStyle: 'italic' }}>
+            {puedeVerTodasLasOC
+              ? 'Todavía no se emitieron Órdenes de Compra en el sistema.'
+              : 'Todavía no registraste ninguna recepción de Orden de Compra.'}
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {[...ordenesVisibles].reverse().map((oc) => {
+              const badge = getBadgeEstado(oc.estado);
+              return (
+                <div
+                  key={oc.id}
+                  style={{
+                    background: tema.fondoPagina,
+                    border: `1px solid ${tema.borde}`,
+                    borderRadius: '10px',
+                    padding: '14px 16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}
+                >
+                  {/* Cabecera de la OC */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <div>
+                      <strong style={{ color: tema.acento, fontSize: '1rem' }}>{oc.numeroOC}</strong>{' '}
+                      <span style={{ color: tema.textoSecundario, fontSize: '0.85rem' }}>— {oc.proveedor}</span>
+                    </div>
+
+                    <span
+                      style={{
+                        background: badge.bg,
+                        color: badge.color,
+                        fontWeight: 700,
+                        fontSize: '0.78rem',
+                        padding: '4px 10px',
+                        borderRadius: '999px'
+                      }}
+                    >
+                      {badge.label}
+                    </span>
+                  </div>
+
+                  {/* Trazabilidad de quién y cuándo */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '8px', fontSize: '0.82rem', color: tema.textoSecundario }}>
+                    <div>
+                      <strong>📤 Pedido realizado por:</strong> {oc.creadoPor || 'No registrado'}
+                      <br />
+                      <strong>🕒 Fecha y hora pedido:</strong> {oc.fechaEmision} {oc.horaEmision ? `a las ${oc.horaEmision}` : ''}
+                    </div>
+
+                    <div>
+                      <strong>{oc.estado === 'anulada' ? '🚫 Anulada por:' : '📥 Recepcionado por:'}</strong>{' '}
+                      {oc.recibidoPor || 'Pendiente'}
+                      <br />
+                      <strong>{oc.estado === 'anulada' ? '🕒 Fecha y hora anulación:' : '🕒 Fecha y hora recepción:'}</strong>{' '}
+                      {oc.fechaRecepcion
+                        ? `${oc.fechaRecepcion} ${oc.horaRecepcion ? `a las ${oc.horaRecepcion}` : ''}`
+                        : '—'}
+                    </div>
+                  </div>
+
+                  {/* Observación general (si existe) */}
+                  {oc.observacion && (
+                    <div
+                      style={{
+                        fontSize: '0.82rem',
+                        color: tema.textoPrincipal,
+                        background: tema.fondoTarjeta,
+                        borderLeft: `3px solid ${oc.estado === 'anulada' ? '#dc2626' : tema.acento}`,
+                        padding: '6px 10px',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      <strong>📝 Observación:</strong> {oc.observacion}
+                    </div>
+                  )}
+
+                  {/* Ítems incluidos en la OC */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', paddingTop: '6px', borderTop: `1px dashed ${tema.borde}` }}>
+                    {oc.items.map((it, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          fontSize: '0.78rem',
+                          background: tema.fondoTarjeta,
+                          border: `1px solid ${tema.borde}`,
+                          borderRadius: '6px',
+                          padding: '4px 8px',
+                          color: tema.textoPrincipal
+                        }}
+                      >
+                        <strong>{it.codigoRepuesto}</strong>: {it.cantidadYaRecibida}/{it.cantidadPedida} u.
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* MODAL PARA ANULAR OC */}
+      {mostrarModalAnular && ocActiva && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '16px',
+          }}
+        >
+          <div
+            style={{
+              background: tema.fondoTarjeta,
+              color: tema.textoPrincipal,
+              border: `1px solid ${tema.borde}`,
+              borderRadius: '12px',
+              padding: '24px',
+              width: '100%',
+              maxWidth: '440px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+            }}
+          >
+            <h3 style={{ margin: 0, color: '#dc2626' }}>🚫 Anular {ocActiva.numeroOC}</h3>
+            <p style={{ margin: 0, fontSize: '0.88rem', color: tema.textoSecundario }}>
+              La orden pasará a estado <strong>Anulada</strong> en el historial sin modificar el inventario. Podés dejar una observación:
+            </p>
+            <input
+              type="text"
+              placeholder="Ej: Error de tipeo en código de repuesto..."
+              value={observacionAnulacion}
+              onChange={(e) => setObservacionAnulacion(e.target.value)}
+              style={{
+                padding: '10px',
+                borderRadius: '6px',
+                border: `1px solid ${tema.borde}`,
+                background: tema.fondoPagina,
+                color: tema.textoPrincipal,
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setMostrarModalAnular(false)}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  border: `1px solid ${tema.borde}`,
+                  background: 'transparent',
+                  color: tema.textoPrincipal,
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                }}
+              >
+                Volver
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmarAnulacionOC}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: '#dc2626',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                }}
+              >
+                Confirmar Anulación
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL PARA REPUESTO NUEVO NO REGISTRADO */}
       {nuevoActual && (

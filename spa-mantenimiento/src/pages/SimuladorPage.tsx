@@ -1,26 +1,43 @@
 import { useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useLocation, useOutletContext } from 'react-router-dom';
 import { type LayoutContextType, type OrdenCompra, type ItemOrden } from '../types';
 
 export function SimuladorPage() {
   const { tema, agregarOrdenCompra } = useOutletContext<LayoutContextType>();
-  
+  const location = useLocation();
+  const itemsIniciales: ItemOrden[] = location.state?.itemsPreseleccionados || [];
+
   const [nuevoRepuesto, setNuevoRepuesto] = useState('');
   const [nuevaCantidad, setNuevaCantidad] = useState('');
-  const [itemsTemporales, setItemsTemporales] = useState<ItemOrden[]>([]);
+  const [itemsTemporales, setItemsTemporales] = useState<ItemOrden[]>(itemsIniciales);
 
   // Función 1: Agrega
   const handleAgregarItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nuevoRepuesto || !nuevaCantidad) return;
 
-    const nuevoItem: ItemOrden = {
-      codigoRepuesto: nuevoRepuesto.toUpperCase(),
-      cantidadPedida: Number(nuevaCantidad),
-      cantidadYaRecibida: 0
-    };
+    const codigoNormalizado = nuevoRepuesto.trim().toUpperCase();
+    const cantidadNum = Number(nuevaCantidad);
 
-    setItemsTemporales([...itemsTemporales, nuevoItem]);
+    setItemsTemporales((prev) => {
+      const existente = prev.find((item) => item.codigoRepuesto === codigoNormalizado);
+      if (existente) {
+        return prev.map((item) =>
+          item.codigoRepuesto === codigoNormalizado
+            ? { ...item, cantidadPedida: item.cantidadPedida + cantidadNum }
+            : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          codigoRepuesto: codigoNormalizado,
+          cantidadPedida: cantidadNum,
+          cantidadYaRecibida: 0
+        }
+      ];
+    });
+
     setNuevoRepuesto('');
     setNuevaCantidad('');
   };
@@ -29,6 +46,17 @@ export function SimuladorPage() {
   const handleQuitarItem = (indexABorrar: number) => {
     setItemsTemporales(itemsTemporales.filter((_, index) => index !== indexABorrar));
   };
+
+  //Edita la cantidad pedida de un ítem ya agregado
+  const handleActualizarCantidad = (indexAEditar: number, nuevaCant: number) => {
+    const cantidadValida = Math.max(1, nuevaCant);
+    setItemsTemporales((prev) =>
+      prev.map((item, index) =>
+        index === indexAEditar ? { ...item, cantidadPedida: cantidadValida } : item
+      )
+    );
+  };
+
 
   // Función 3: Genera
   const handleGenerarOC = () => {
@@ -91,10 +119,64 @@ export function SimuladorPage() {
             {/* Lista nueva que incluye el botón de Quitar */}
             <ul style={{ margin: 0, paddingLeft: '0', listStyle: 'none', color: tema.textoSecundario }}>
               {itemsTemporales.map((item, index) => (
-                <li key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', borderBottom: `1px solid ${tema.borde}` }}>
+                <li key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '8px', borderBottom: `1px solid ${tema.borde}` }}>
                   <span>
                     <strong style={{ color: tema.acento }}>{item.codigoRepuesto}</strong> - {item.cantidadPedida} unidades
                   </span>
+
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleActualizarCantidad(index, item.cantidadPedida - 1)}
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '4px',
+                        border: `1px solid ${tema.borde}`,
+                        background: tema.fondoTarjeta,
+                        color: tema.textoPrincipal,
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      -
+                    </button>
+
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.cantidadPedida}
+                      onChange={(e) => handleActualizarCantidad(index, Number(e.target.value))}
+                      style={{
+                        width: '60px',
+                        textAlign: 'center',
+                        padding: '4px',
+                        borderRadius: '4px',
+                        border: `1px solid ${tema.borde}`,
+                        background: tema.fondoTarjeta,
+                        color: tema.textoPrincipal,
+                        fontWeight: 'bold'
+                      }}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => handleActualizarCantidad(index, item.cantidadPedida + 1)}
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '4px',
+                        border: `1px solid ${tema.borde}`,
+                        background: tema.fondoTarjeta,
+                        color: tema.textoPrincipal,
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      +
+                    </button>
+                    <span style={{ fontSize: '0.85rem' }}>u.</span>
+                  </div>
                   
                   <button 
                     type="button"

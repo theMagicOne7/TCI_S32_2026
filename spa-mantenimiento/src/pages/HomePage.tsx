@@ -1,14 +1,22 @@
 // DASHBOARD DE INICIO CON FILTRADO DINÁMICO POR ROL (RBAC)
 
+import { useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import type { LayoutContextType } from '../types';
+import type { LayoutContextType, ItemOrden } from '../types';
 
 export function HomePage() {
   const navigate = useNavigate();
   const context = useOutletContext<LayoutContextType>() as any;
+  const [mostrarDetalleAlertas, setMostrarDetalleAlertas] = useState(false);
+  const [seleccionadosOC, setSeleccionadosOC] = useState<ItemOrden[]>([]);
 
   // Extraemos el usuario actual y los repuestos del contexto global
-  const { tema, esModoOscuro, repuestos = [], usuarioActual } = context || {};
+  const {
+    tema,
+    esModoOscuro,
+    repuestos = [],
+    usuarioActual,
+  } = context || {};
   
   // Obtenemos el rol del usuario (normalizado a minúsculas o texto plano para comparar con seguridad)
   const rolUsuario = usuarioActual?.rol?.toLowerCase() || '';
@@ -16,6 +24,25 @@ export function HomePage() {
     // Detección automática de alertas basadas en stock crítico (RN-02)
   const repuestosSinStock = repuestos.filter((r: any) => r.stock_disponible <= 0);
   const repuestosCriticos = repuestos.filter((r: any) => r.stock_disponible > 0 && r.stock_disponible <= 5);
+
+  const estaSeleccionado = (codigo: string) =>
+    seleccionadosOC.some((item) => item.codigoRepuesto === codigo);
+
+  const handleToggleRepuestoOC = (rep: any) => {
+    if (estaSeleccionado(rep.codigo)) {
+      setSeleccionadosOC((prev) => prev.filter((item) => item.codigoRepuesto !== rep.codigo));
+    } else {
+      const cantidadSugerida = Math.max(1, 10 - rep.stock_disponible);
+      setSeleccionadosOC((prev) => [
+        ...prev,
+        {
+          codigoRepuesto: rep.codigo,
+          cantidadPedida: cantidadSugerida,
+          cantidadYaRecibida: 0
+        }
+      ]);
+    }
+  };
 
   const cardStyle = {
     flex: '1 1 280px',
@@ -36,17 +63,26 @@ export function HomePage() {
 
       {/* ── 1. PANEL DE ALERTAS CRÍTICAS DE PLANTA (GMP / RN-02) ── */}
       {(repuestosSinStock.length > 0 || repuestosCriticos.length > 0) && (
-        <div style={{
+        <div
+         onClick={() => setMostrarDetalleAlertas((prev) => !prev)}
+         style={{
           background: esModoOscuro ? '#2a1215' : '#fef2f2',
           border: '2px solid #ef4444',
           borderRadius: '12px',
           padding: '16px 20px',
           marginBottom: '24px',
-          boxShadow: '0 4px 12px rgba(239, 68, 68, 0.1)'
+          boxShadow: '0 4px 12px rgba(239, 68, 68, 0.1)',
+          cursor: 'pointer'
         }}>
-          <h3 style={{ color: '#dc2626', margin: '0 0 8px 0', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            ⚠️ Alertas Activas de Pañol y Stock
-          </h3>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <h3 style={{ color: '#dc2626', margin: '0 0 8px 0', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              ⚠️ Alertas Activas de Pañol y Stock
+            </h3>
+            <span style={{ color: '#dc2626', fontSize: '0.8rem', fontWeight: 700 }}>
+              {mostrarDetalleAlertas ? '▲ Ocultar' : '▼ Ver detalle'}
+            </span>
+          </div>
           <ul style={{ margin: 0, paddingLeft: '20px', color: esModoOscuro ? '#fca5a5' : '#7f1d1d', fontSize: '0.9rem' }}>
             {repuestosSinStock.length > 0 && (
               <li>Hay <strong>{repuestosSinStock.length} repuesto(s) sin stock</strong> que bloquean operaciones.</li>
@@ -55,6 +91,104 @@ export function HomePage() {
               <li>Hay <strong>{repuestosCriticos.length} repuesto(s) en stock crítico</strong> requiriendo solicitud a compras.</li>
             )}
           </ul>
+
+          {mostrarDetalleAlertas && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                marginTop: '12px',
+                paddingTop: '12px',
+                borderTop: '1px solid #fca5a5',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                cursor: 'default'
+              }}
+            >
+              {[...repuestosSinStock, ...repuestosCriticos].map((rep: any) => {
+                const seleccionado = estaSeleccionado(rep.codigo);
+                return (
+                  <div
+                    key={rep.codigo}
+                    style={{
+                      background: esModoOscuro ? '#1f0d10' : '#ffffff',
+                      border: '1px solid #fecaca',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '10px',
+                      fontSize: '0.85rem'
+                    }}
+                  >
+                    <div>
+                      <strong style={{ color: tema.textoPrincipal }}>{rep.codigo}</strong> —{' '}
+                      <span style={{ color: tema.textoSecundario }}>{rep.nombre}</span>
+                      {rep.ubicacion && (
+                        <span style={{ color: tema.textoSecundario, fontSize: '0.78rem' }}> ({rep.ubicacion})</span>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{
+                        fontWeight: 700,
+                        color: rep.stock_disponible <= 0 ? '#dc2626' : '#b45309',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {rep.stock_disponible <= 0 ? 'Sin stock (0 u.)' : `${rep.stock_disponible} u. disp.`}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleRepuestoOC(rep)}
+                        disabled={seleccionado}
+                        style={{
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: seleccionado ? '#16a34a' : '#0d9488',
+                          color: '#ffffff',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {seleccionado ? '✓ En Orden de Compra' : '+ Orden de Compra'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {seleccionadosOC.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate('/simulador', {
+                        state: { itemsPreseleccionados: seleccionadosOC }
+                      })
+                    }
+                    style={{
+                      padding: '7px 14px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: '#dc2626',
+                      color: '#ffffff',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Ir a Orden de Compra ({seleccionadosOC.length}) →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
